@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
@@ -8,14 +9,68 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/spf13/cobra"
 	"dataset-cli/internal/query"
+	"github.com/spf13/cobra"
 )
 
 var (
-	outputPath string
+	outputPath   string
 	outputFormat string
 )
+
+func exportWithContext(tableName, format, path string) {
+	ctx := context.Background()
+	db, err := getDB()
+	if err != nil {
+		fmt.Printf("Error: %v\n", err)
+		return
+	}
+
+	exists, err := db.TableExists(ctx, tableName)
+	if err != nil || !exists {
+		fmt.Printf("Error: table '%s' does not exist\n", tableName)
+		return
+	}
+
+	q := query.New(tableName)
+	exec := query.NewExecutor(db)
+
+	queryStr, _ := q.Filter("")
+
+	results, err := exec.Execute(queryStr)
+	if err != nil {
+		fmt.Printf("Error executing query: %v\n", err)
+		return
+	}
+
+	if len(results) == 0 {
+		fmt.Println("No results to export")
+		return
+	}
+
+	outputFile := path
+	if outputFile == "" {
+		outputFile = fmt.Sprintf("export.%s", format)
+	}
+
+	var writeErr error
+	switch format {
+	case "json":
+		writeErr = writeJSON(outputFile, results)
+	case "csv":
+		writeErr = writeCSV(outputFile, results)
+	default:
+		fmt.Printf("Error: unsupported format '%s' (supported: json, csv)\n", format)
+		return
+	}
+
+	if writeErr != nil {
+		fmt.Printf("Error writing file: %v\n", writeErr)
+		return
+	}
+
+	fmt.Printf("\nSuccessfully exported %d records to %s\n", len(results), outputFile)
+}
 
 var exportCmd = &cobra.Command{
 	Use:   "export",
@@ -27,6 +82,7 @@ Example:
   dataset-cli export users --output data.csv --format csv
   dataset-cli export products --output filtered.json --where "price > 100"`,
 	Run: func(cmd *cobra.Command, args []string) {
+		ctx := context.Background()
 		if len(args) == 0 {
 			fmt.Println("Error: please provide a table name")
 			os.Exit(1)
@@ -44,9 +100,8 @@ Example:
 			fmt.Printf("Error: %v\n", err)
 			os.Exit(1)
 		}
-		defer db.Close()
 
-		exists, err := db.TableExists(nil, tableName)
+		exists, err := db.TableExists(ctx, tableName)
 		if err != nil || !exists {
 			fmt.Printf("Error: table '%s' does not exist\n", tableName)
 			os.Exit(1)
@@ -127,7 +182,7 @@ func writeCSV(path string, results []map[string]interface{}) error {
 	for key := range results[0] {
 		headers = append(headers, key)
 	}
-	writer.Write(headers)
+	_ = writer.Write(headers)
 
 	for _, row := range results {
 		var record []string
@@ -138,7 +193,7 @@ func writeCSV(path string, results []map[string]interface{}) error {
 			}
 			record = append(record, val)
 		}
-		writer.Write(record)
+		_ = writer.Write(record)
 	}
 
 	return nil

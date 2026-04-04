@@ -1,27 +1,7 @@
-version: '3.8'
-
 services:
-  dataset-cli:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    volumes:
-      - ./data:/data
-      - ./config:/root/.dataset-cli
-    environment:
-      - DB_HOST=postgres
-      - DB_PORT=5432
-      - DB_USER=postgres
-      - DB_PASSWORD=postgres
-      - DB_NAME=dataset
-    depends_on:
-      postgres:
-        condition: service_healthy
-    networks:
-      - dataset-network
-
   postgres:
     image: postgres:16-alpine
+    container_name: dataset-postgres
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
@@ -31,12 +11,39 @@ services:
     ports:
       - "5432:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 10s
+      test: ["CMD-SHELL", "pg_isready -U postgres -d dataset"]
+      interval: 5s
       timeout: 5s
       retries: 5
     networks:
       - dataset-network
+
+  dataset-cli:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      cache_from:
+        - dataset-cli:cache
+      cache_to:
+        - dataset-cli:cache,mode=max
+    container_name: dataset-cli
+    volumes:
+      - ./data:/data:ro
+      - ./.env:/root/.dataset-cli/.env:ro
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
+      - DB_NAME=dataset
+      - DB_SSLMODE=disable
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - dataset-network
+    stdin_open: true
+    tty: true
 
 networks:
   dataset-network:

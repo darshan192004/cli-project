@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"context"
 	"fmt"
 	"os"
 
@@ -10,9 +9,16 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var cfgFile string
-var db *database.DB
-var selectColumns []string
+var (
+	cfgFile       string
+	db            database.Backend
+	selectColumns []string
+	Verbose       bool
+	DryRun        bool
+	NoColor       bool
+	UsePostgres   bool
+	UseCloud      bool
+)
 
 var rootCmd = &cobra.Command{
 	Use:   "dataset-cli",
@@ -20,14 +26,32 @@ var rootCmd = &cobra.Command{
 	Long: `Dataset CLI - A powerful tool for processing datasets
 
 Run without arguments to start interactive mode, or use:
-  migrate    - Import CSV/JSON files into PostgreSQL
+  migrate    - Import CSV/JSON files into database
   filter     - Filter data with WHERE conditions
   transform  - Select specific columns
   paginate   - Paginated queries
   schema     - Show table schema
   export     - Export query results to file
+  doctor     - Check system health and diagnose issues
+
+Storage Backends:
+  - SQLite (default): Local storage at ~/.dataset-cli/dataset.db
+  - PostgreSQL: Use --postgres flag
+  - Cloud: Use --cloud flag (TursoDB)
+
+Examples:
+  dataset-cli migrate data.csv --progress
+  dataset-cli filter users --where "age > 25"
+  dataset-cli doctor
+  dataset-cli migrate data.csv --postgres  # Use PostgreSQL
+  dataset-cli migrate data.csv --cloud     # Use TursoDB cloud
 
 For more information, use --help with any command.`,
+	PersistentPreRun: func(cmd *cobra.Command, args []string) {
+		if NoColor {
+			os.Setenv("NO_COLOR", "1")
+		}
+	},
 }
 
 func Execute() {
@@ -39,11 +63,16 @@ func Execute() {
 
 func init() {
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.dataset-cli.yaml)")
-	rootCmd.PersistentFlags().String("host", "", "Database host (overrides config)")
-	rootCmd.PersistentFlags().Int("port", 0, "Database port (overrides config)")
-	rootCmd.PersistentFlags().String("user", "", "Database user (overrides config)")
-	rootCmd.PersistentFlags().String("password", "", "Database password (overrides config)")
-	rootCmd.PersistentFlags().String("dbname", "", "Database name (overrides config)")
+	rootCmd.PersistentFlags().String("host", "", "Database host (overrides config for PostgreSQL)")
+	rootCmd.PersistentFlags().Int("port", 0, "Database port (overrides config for PostgreSQL)")
+	rootCmd.PersistentFlags().String("user", "", "Database user (overrides config for PostgreSQL)")
+	rootCmd.PersistentFlags().String("password", "", "Database password (overrides config for PostgreSQL)")
+	rootCmd.PersistentFlags().String("dbname", "", "Database name (overrides config for PostgreSQL)")
+	rootCmd.PersistentFlags().BoolVarP(&Verbose, "verbose", "v", false, "Enable verbose output")
+	rootCmd.PersistentFlags().BoolVar(&DryRun, "dry-run", false, "Show what would be done without executing")
+	rootCmd.PersistentFlags().BoolVar(&NoColor, "no-color", false, "Disable color output")
+	rootCmd.PersistentFlags().BoolVar(&UsePostgres, "postgres", false, "Use PostgreSQL instead of SQLite")
+	rootCmd.PersistentFlags().BoolVar(&UseCloud, "cloud", false, "Use TursoDB cloud (requires LIBSQL_URL env var)")
 }
 
 func loadConfig(host string, port int, user, password, dbname string) (*config.Config, error) {
@@ -71,30 +100,46 @@ func loadConfig(host string, port int, user, password, dbname string) (*config.C
 	return cfg, nil
 }
 
-func getDB() (*database.DB, error) {
+func getDB() (database.Backend, error) {
 	if db != nil {
-		err := db.Pool.Ping(context.Background())
-		if err == nil {
-			return db, nil
+		return db, nil
+	}
+
+	var err error
+	if UseCloud {
+		db, err = database.NewBackend(database.BackendLibSQL, nil)
+	} else if UsePostgres {
+		host, _ := rootCmd.Flags().GetString("host")
+		port, _ := rootCmd.Flags().GetInt("port")
+		user, _ := rootCmd.Flags().GetString("user")
+		password, _ := rootCmd.Flags().GetString("password")
+		dbname, _ := rootCmd.Flags().GetString("dbname")
+
+		cfg, loadErr := loadConfig(host, port, user, password, dbname)
+		if loadErr != nil {
+			return nil, loadErr
 		}
+
+		db, err = database.NewBackend(database.BackendPostgres, cfg)
+	} else {
+		db, err = database.NewBackend(database.BackendSQLite, nil)
 	}
 
-	host, _ := rootCmd.Flags().GetString("host")
-	port, _ := rootCmd.Flags().GetInt("port")
-	user, _ := rootCmd.Flags().GetString("user")
-	password, _ := rootCmd.Flags().GetString("password")
-	dbname, _ := rootCmd.Flags().GetString("dbname")
-
-	cfg, err := loadConfig(host, port, user, password, dbname)
-	if err != nil {
-		return nil, err
-	}
-
-	newDB, err := database.Connect(&cfg.Database)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to database: %w", err)
 	}
 
-	db = newDB
 	return db, nil
+}
+
+func Debug(format string, args ...interface{}) {
+	if Verbose {
+		fmt.Printf("[DEBUG] "+format+"\n", args...)
+	}
+}
+
+func Log(format string, args ...interface{}) {
+	if Verbose {
+		fmt.Printf(format+"\n", args...)
+	}
 }

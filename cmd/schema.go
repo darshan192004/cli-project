@@ -29,7 +29,6 @@ Example:
 			fmt.Printf("Error: %v\n", err)
 			os.Exit(1)
 		}
-		defer db.Close()
 
 		ctx := context.Background()
 		info, err := db.GetTableInfo(ctx, tableName)

@@ -54,3 +54,21 @@ func TestLoadWithDefaults(t *testing.T) {
 		os.Setenv("HOME", originalHome)
 	}
 }
+
+func TestDatabaseConfigConnectionStringWithSSL(t *testing.T) {
+	cfg := DatabaseConfig{
+		Host:     "db.example.com",
+		Port:     5433,
+		User:     "admin",
+		Password: "pass123",
+		DBName:   "production",
+		SSLMode:  "require",
+	}
+
+	expected := "postgres://admin:pass123@db.example.com:5433/production?sslmode=require"
+	result := cfg.ConnectionString()
+
+	if result != expected {
+		t.Errorf("ConnectionString() = %q, want %q", result, expected)
+	}
+}

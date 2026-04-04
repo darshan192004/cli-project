@@ -1,0 +1,73 @@
+#compdef dataset-cli
+
+_dataset_cli() {
+    local -a commands
+    commands=(
+        'migrate:Import CSV/JSON files into PostgreSQL'
+        'filter:Filter data with WHERE conditions'
+        'transform:Select specific columns from a table'
+        'paginate:Paginated queries with limit and offset'
+        'schema:Show table schema and column information'
+        'export:Export query results to JSON or CSV'
+        'stats:Show table statistics and data distribution'
+        'delete:Delete a table from the database'
+        'doctor:Check system health and diagnose issues'
+        'help:Help about any command'
+    )
+
+    _describe 'command' commands
+}
+
+_dataset_cli_migrate() {
+    _arguments \
+        '-f[Path to CSV or JSON file]:file:_files' \
+        '--table-name[Custom table name]' \
+        '--drop[Drop existing table before import]' \
+        '--skip-errors[Skip rows with errors instead of failing]' \
+        '--progress[Show import progress]' \
+        '*:file:_files'
+}
+
+_dataset_cli_filter() {
+    _arguments \
+        '-w[WHERE condition]:condition' \
+        '--where[WHERE condition]:condition' \
+        '--limit[Maximum number of results per page]:number' \
+        '--page[Page number]:number' \
+        '*:table:_dataset_cli_tables'
+}
+
+_dataset_cli_export() {
+    _arguments \
+        '-o[Output file path]:file:_files' \
+        '--output[Output file path]:file:_files' \
+        '--format[Output format (json, csv)]:format:(json csv)' \
+        '--where[WHERE condition]:condition' \
+        '*:table:_dataset_cli_tables'
+}
+
+_dataset_cli_tables() {
+    # Would query database for tables
+    _message 'table name'
+}
+
+subcommands=(
+    'migrate:migrate'
+    'filter:filter'
+    'transform:transform'
+    'paginate:paginate'
+    'schema:schema'
+    'export:export'
+    'stats:stats'
+    'delete:delete'
+    'doctor:doctor'
+)
+
+case "${words[1]}" in
+    migrate) _dataset_cli_migrate ;;
+    filter) _dataset_cli_filter ;;
+    export) _dataset_cli_export ;;
+    *) _dataset_cli ;;
+esac
+
+return 0

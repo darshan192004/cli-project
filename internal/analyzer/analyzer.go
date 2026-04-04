@@ -11,6 +11,10 @@ import (
 	"dataset-cli/internal/reader"
 )
 
+func sanitizeColumnName(name string) string {
+	return reader.SanitizeColumnName(name)
+}
+
 type ColumnType int
 
 const (
@@ -59,7 +63,7 @@ type Analyzer struct {
 }
 
 func New() *Analyzer {
-	return &Analyzer{sampleSize: 100}
+	return &Analyzer{sampleSize: 1000}
 }
 
 func (a *Analyzer) Analyze(filePath string) (*Schema, error) {
@@ -86,15 +90,12 @@ func (a *Analyzer) Analyze(filePath string) (*Schema, error) {
 	columns := make([]Column, 0, len(headers))
 	for _, header := range headers {
 		colType := a.detectColumnType(records, header)
+		sanitizedName := sanitizeColumnName(header)
 		columns = append(columns, Column{
-			Name:         header,
+			Name:         sanitizedName,
 			Type:         colType,
 			IsPrimaryKey: false,
 		})
-	}
-
-	if len(columns) > 0 && columns[0].Type == TypeString {
-		columns[0].IsPrimaryKey = true
 	}
 
 	tableName := sanitizeTableName(filepath.Base(filePath))
@@ -113,10 +114,14 @@ func (a *Analyzer) detectColumnType(records []map[string]interface{}, columnName
 		sampleCount = a.sampleSize
 	}
 
-	var isInteger, isFloat, isBool, isDate, isTimestamp bool
-	nullCount := 0
-	allNumeric := true
+	isInteger := true
+	isFloat := true
+	isBoolStrict := true
+	isDate := true
+	isTimestamp := true
+	isNumericOnly := true
 	hasDecimal := false
+	nullCount := 0
 
 	for i := 0; i < sampleCount; i++ {
 		value := records[i][columnName]
@@ -126,44 +131,28 @@ func (a *Analyzer) detectColumnType(records []map[string]interface{}, columnName
 		}
 
 		strVal := fmt.Sprintf("%v", value)
-
-		if _, err := strconv.Atoi(strVal); err != nil {
-			allNumeric = false
-		} else {
-			if strings.Contains(strVal, ".") {
-				hasDecimal = true
-			}
-		}
+		strVal = strings.TrimSpace(strVal)
 
 		if isInteger && strVal != "" {
 			if _, err := strconv.Atoi(strVal); err != nil {
 				isInteger = false
-			}
-		} else if strVal != "" {
-			if _, err := strconv.Atoi(strVal); err == nil {
-				isInteger = true
+			} else if strings.Contains(strVal, ".") {
+				hasDecimal = true
 			}
 		}
 
 		if isFloat && strVal != "" {
 			if _, err := strconv.ParseFloat(strVal, 64); err != nil {
 				isFloat = false
-			}
-		} else if strVal != "" {
-			if _, err := strconv.ParseFloat(strVal, 64); err == nil {
-				isFloat = true
+			} else if strings.Contains(strVal, ".") {
+				hasDecimal = true
 			}
 		}
 
-		if isBool && strVal != "" {
+		if isBoolStrict && strVal != "" {
 			lower := strings.ToLower(strVal)
-			if lower != "true" && lower != "false" && lower != "1" && lower != "0" {
-				isBool = false
-			}
-		} else if strVal != "" {
-			lower := strings.ToLower(strVal)
-			if lower == "true" || lower == "false" || lower == "1" || lower == "0" {
-				isBool = true
+			if lower != "true" && lower != "false" {
+				isBoolStrict = false
 			}
 		}
 
@@ -171,19 +160,17 @@ func (a *Analyzer) detectColumnType(records []map[string]interface{}, columnName
 			if _, err := time.Parse("2006-01-02", strVal); err != nil {
 				isDate = false
 			}
-		} else if strVal != "" {
-			if _, err := time.Parse("2006-01-02", strVal); err == nil {
-				isDate = true
-			}
 		}
 
 		if isTimestamp && strVal != "" {
 			if _, err := time.Parse(time.RFC3339, strVal); err != nil {
 				isTimestamp = false
 			}
-		} else if strVal != "" {
-			if _, err := time.Parse(time.RFC3339, strVal); err == nil {
-				isTimestamp = true
+		}
+
+		if isNumericOnly && strVal != "" {
+			if _, err := strconv.ParseFloat(strVal, 64); err != nil {
+				isNumericOnly = false
 			}
 		}
 	}
@@ -193,28 +180,25 @@ func (a *Analyzer) detectColumnType(records []map[string]interface{}, columnName
 		return TypeString
 	}
 
-	if !allNumeric {
+	if !isNumericOnly {
 		isInteger = false
 		isFloat = false
 	}
 
-	if isFloat && !hasDecimal {
-		return TypeInteger
-	}
-	if isFloat {
-		return TypeFloat
-	}
-	if isInteger {
-		return TypeInteger
-	}
-	if isBool {
-		return TypeBoolean
-	}
 	if isTimestamp {
 		return TypeTimestamp
 	}
 	if isDate {
 		return TypeDate
+	}
+	if isFloat && hasDecimal {
+		return TypeFloat
+	}
+	if isInteger {
+		return TypeInteger
+	}
+	if isFloat && !hasDecimal {
+		return TypeInteger
 	}
 
 	return TypeString

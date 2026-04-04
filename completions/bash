@@ -1,0 +1,61 @@
+#!/bin/bash
+# dataset-cli bash completion
+
+_dataset_cli() {
+    local cur prev words cword
+    COMPREPLY=()
+    cur="${COMP_WORDS[COMP_CWORD]}"
+    prev="${COMP_WORDS[COMP_CWORD-1]}"
+
+    # Top-level commands
+    commands="migrate filter transform paginate schema export stats delete doctor help"
+
+    # Subcommands
+    case "${prev}" in
+        migrate)
+            COMPREPLY=($(compgen -f -- "${cur}"))
+            return 0
+            ;;
+        filter|transform|export|stats|delete)
+            # Get tables from database (if available)
+            _dataset_cli_tables
+            return 0
+            ;;
+        --table-name|--where|--output|--format|--columns|--table)
+            return 0
+            ;;
+        --help|-h)
+            COMPREPLY=($(compgen -W "${commands}" -- "${cur}"))
+            return 0
+            ;;
+        *)
+            ;;
+    esac
+
+    # Main command completion
+    if [[ ${cword} -eq 1 ]] ; then
+        COMPREPLY=($(compgen -W "${commands}" -- "${cur}"))
+        return 0
+    fi
+
+    # Flag completion
+    if [[ "${cur}" == -* ]] ; then
+        flags="--help --version --config --host --port --user --password --dbname"
+        COMPREPLY=($(compgen -W "${flags}" -- "${cur}"))
+        return 0
+    fi
+
+    # File completion for migrate
+    if [[ "${words[1]}" == "migrate" ]] ; then
+        COMPREPLY=($(compgen -f -X '!{*.csv,*.json}' -- "${cur}"))
+        return 0
+    fi
+}
+
+_dataset_cli_tables() {
+    # This would query the database for table names
+    # For now, return empty - could be enhanced to query live
+    return 0
+}
+
+complete -F _dataset_cli dataset-cli

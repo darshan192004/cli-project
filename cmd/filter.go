@@ -5,9 +5,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"strings"
 
 	"dataset-cli/internal/query"
+	"github.com/gookit/color"
 	"github.com/spf13/cobra"
 )
 
@@ -39,7 +39,6 @@ Example:
 			fmt.Printf("Error: %v\n", err)
 			os.Exit(1)
 		}
-		defer db.Close()
 
 		ctx := context.Background()
 		exists, err := db.TableExists(ctx, tableName)
@@ -68,7 +67,8 @@ Example:
 		}
 
 		var totalCount int64
-		if err := db.Pool.QueryRow(ctx, countQuery).Scan(&totalCount); err != nil {
+		row, _ := db.QueryRow(ctx, countQuery)
+		if err := row.(interface{ Scan(...interface{}) error }).Scan(&totalCount); err != nil {
 			fmt.Printf("Error counting records: %v\n", err)
 			os.Exit(1)
 		}
@@ -91,7 +91,7 @@ Example:
 		}
 
 		if len(results) == 0 {
-			fmt.Println("No results found")
+			color.Yellow.Println("No results found")
 			return
 		}
 
@@ -100,9 +100,9 @@ Example:
 			remaining = 0
 		}
 
-		fmt.Printf("\n=== Filter Results ===\n")
+		color.Bold.Printf("\n=== Filter Results ===\n")
 		fmt.Printf("Page %d of %d (Total: %d records, %d remaining)\n\n", page, totalPages, totalCount, remaining)
-		printResults(results)
+		PrintTable(results)
 
 		if totalPages > page {
 			fmt.Printf("\nNext page: dataset-cli filter %s --where \"%s\" --limit %d --page %d\n",
@@ -111,76 +111,15 @@ Example:
 	},
 }
 
-func printResults(results []map[string]interface{}) {
-	if len(results) == 0 {
-		return
-	}
-
-	cols := make([]string, 0)
-	for key := range results[0] {
-		cols = append(cols, key)
-	}
-
-	colWidths := make(map[string]int)
-	for _, col := range cols {
-		l := len(col)
-		for _, row := range results {
-			if v, ok := row[col]; ok {
-				vStr := fmt.Sprintf("%v", v)
-				if len(vStr) > l {
-					l = len(vStr)
-				}
-			}
-		}
-		if l > 30 {
-			l = 30
-		}
-		colWidths[col] = l + 2
-	}
-
-	totalWidth := 1
-	for _, w := range colWidths {
-		totalWidth += w + 1
-	}
-
-	fmt.Println("+" + strings.Repeat("-", totalWidth-1) + "+")
-	fmt.Print("|")
-	for _, col := range cols {
-		displayCol := col
-		if len(col) > colWidths[col]-2 {
-			displayCol = col[:colWidths[col]-5] + "..."
-		}
-		fmt.Printf(" %-*s |", colWidths[col]-1, displayCol)
-	}
-	fmt.Println()
-	fmt.Println("+" + strings.Repeat("-", totalWidth-1) + "+")
-
-	for _, row := range results {
-		fmt.Print("|")
-		for _, col := range cols {
-			val := ""
-			if v, ok := row[col]; ok {
-				val = fmt.Sprintf("%v", v)
-				if len(val) > colWidths[col]-2 {
-					val = val[:colWidths[col]-5] + "..."
-				}
-			}
-			fmt.Printf(" %-*s |", colWidths[col]-1, val)
-		}
-		fmt.Println()
-	}
-	fmt.Println("+" + strings.Repeat("-", totalWidth-1) + "+")
-}
-
 func askExport(results []map[string]interface{}) {
 	fmt.Print("\nDo you want to export results to a file? (y/n): ")
 	var response string
-	fmt.Scanln(&response)
+	_, _ = fmt.Scanln(&response)
 
 	if response == "y" || response == "Y" {
 		fmt.Print("Enter output file path (e.g., output.json): ")
 		var outputPath string
-		fmt.Scanln(&outputPath)
+		_, _ = fmt.Scanln(&outputPath)
 
 		var data []byte
 		if len(results) > 0 {

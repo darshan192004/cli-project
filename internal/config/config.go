@@ -29,7 +29,7 @@ func (d DatabaseConfig) ConnectionString() string {
 }
 
 func Load() (*Config, error) {
-	loadEnvFile(".env")
+	_ = loadEnvFile(".env")
 
 	viper.SetConfigName("config")
 	viper.SetConfigType("yaml")
@@ -40,14 +40,14 @@ func Load() (*Config, error) {
 	viper.SetDefault("database.port", 5432)
 	viper.SetDefault("database.sslmode", "disable")
 
-	viper.BindEnv("database.host", "DB_HOST")
-	viper.BindEnv("database.port", "DB_PORT")
-	viper.BindEnv("database.user", "DB_USER")
-	viper.BindEnv("database.password", "DB_PASSWORD")
-	viper.BindEnv("database.dbname", "DB_NAME")
-	viper.BindEnv("database.sslmode", "DB_SSLMODE")
+	_ = viper.BindEnv("database.host", "DB_HOST")
+	_ = viper.BindEnv("database.port", "DB_PORT")
+	_ = viper.BindEnv("database.user", "DB_USER")
+	_ = viper.BindEnv("database.password", "DB_PASSWORD")
+	_ = viper.BindEnv("database.dbname", "DB_NAME")
+	_ = viper.BindEnv("database.sslmode", "DB_SSLMODE")
 
-	viper.ReadInConfig()
+	_ = viper.ReadInConfig()
 	viper.AutomaticEnv()
 
 	var cfg Config
