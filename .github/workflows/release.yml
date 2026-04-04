@@ -35,6 +35,7 @@ jobs:
         uses: golangci/golangci-lint-action@v7
         with:
           version: latest
+          install-mode: goinstall
 
   test:
     name: Test
@@ -85,18 +86,23 @@ jobs:
           - goos: linux
             goarch: amd64
             ext: ''
+            cgo: 1
           - goos: linux
             goarch: arm64
             ext: ''
+            cgo: 1
           - goos: darwin
             goarch: amd64
             ext: ''
+            cgo: 0
           - goos: darwin
             goarch: arm64
             ext: ''
+            cgo: 0
           - goos: windows
             goarch: amd64
             ext: '.exe'
+            cgo: 0
 
     steps:
       - name: Checkout code
@@ -107,13 +113,19 @@ jobs:
         with:
           go-version: ${{ env.GO_VERSION }}
 
+      - name: Install cross-compiler
+        if: matrix.cgo == 1 && matrix.goarch == 'arm64'
+        run: sudo apt-get install -y gcc-aarch64-linux-gnu
+
       - name: Build
         env:
           GOOS: ${{ matrix.goos }}
           GOARCH: ${{ matrix.goarch }}
+          CGO_ENABLED: ${{ matrix.cgo }}
+          CC: ${{ matrix.cgo == 1 && matrix.goarch == 'arm64' && 'aarch64-linux-gnu-gcc' || 'gcc' }}
         run: |
           OUTPUT_NAME="dataset-cli-${GOOS}-${GOARCH}${{ matrix.ext }}"
-          CGO_ENABLED=1 go build -ldflags="-s -w" -o "$OUTPUT_NAME" .
+          go build -ldflags="-s -w" -o "$OUTPUT_NAME" .
 
       - name: Compute checksums
         run: |
@@ -229,3 +241,50 @@ jobs:
           files: |
             dist/*
           generate_release_notes: true
+
+  publish-npm:
+    name: Publish to NPM
+    runs-on: ubuntu-latest
+    needs: [release] # Only run after the GitHub Release is successful
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24' # Recommended for 2026 provenance
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Generate NPM Package
+        run: |
+          mkdir -p npm-package/bin npm-package/scripts
+          
+          cat <<EOF > npm-package/package.json
+          {
+            "name": "dataset-cli",
+            "version": "${GITHUB_REF#refs/tags/v}",
+            "description": "Dataset processing CLI tool",
+            "repository": {
+              "type": "git",
+              "url": "git+https://github.com/${{ github.repository }}.git"
+            },
+            "bin": {
+              "dataset-cli": "bin/launcher.js"
+            },
+            "scripts": {
+              "postinstall": "node scripts/install.js"
+            }
+          }
+          EOF
+          
+          cp bin/launcher.js npm-package/bin/
+          cp scripts/install.js npm-package/scripts/
+
+      - name: Publish to NPM
+        working-directory: npm-package
+        # We add --no-git-checks to prevent NPM from looking for a git repo inside the subfolder
+        run: npm publish --access public --provenance --no-git-checks
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_CONFIG_PROVENANCE: true

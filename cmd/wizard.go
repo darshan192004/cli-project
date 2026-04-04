@@ -379,7 +379,7 @@ func writeExportFile(path, format string, results []map[string]interface{}) erro
 	if err != nil {
 		return err
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	writer := csv.NewWriter(file)
 	defer writer.Flush()

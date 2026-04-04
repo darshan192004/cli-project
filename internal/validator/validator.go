@@ -76,7 +76,7 @@ func ValidateFile(path string) *ValidationResult {
 		result.Errors = append(result.Errors, errors.NewFileReadError(path, err))
 		return result
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	result.FileInfo = &FileInfo{
 		Path:      path,

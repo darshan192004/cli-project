@@ -65,7 +65,7 @@ func (l *LibSQLDB) GetTableSchema(ctx context.Context, tableName string) ([]Colu
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var columns []ColumnInfo
 	for rows.Next() {
@@ -119,7 +119,7 @@ func (l *LibSQLDB) GetAllTables(ctx context.Context) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var tables []string
 	for rows.Next() {
@@ -137,7 +137,7 @@ func (l *LibSQLDB) Execute(ctx context.Context, query string, args ...interface{
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	columns, err := rows.Columns()
 	if err != nil {

@@ -49,12 +49,12 @@ func (e *AppError) WithError(err error) *AppError {
 
 func (e *AppError) Print() string {
 	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf("\n  ✗ %s\n", e.Message))
+	fmt.Fprintf(&sb, "\n  ✗ %s\n", e.Message)
 	if e.Err != nil {
-		sb.WriteString(fmt.Sprintf("    Error: %v\n", e.Err))
+		fmt.Fprintf(&sb, "    Error: %v\n", e.Err)
 	}
 	if e.Hint != "" {
-		sb.WriteString(fmt.Sprintf("    💡 Hint: %s\n", e.Hint))
+		fmt.Fprintf(&sb, "    💡 Hint: %s\n", e.Hint)
 	}
 	return sb.String()
 }

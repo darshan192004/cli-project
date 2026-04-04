@@ -49,7 +49,7 @@ Examples:
 For more information, use --help with any command.`,
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
 		if NoColor {
-			os.Setenv("NO_COLOR", "1")
+			_ = os.Setenv("NO_COLOR", "1")
 		}
 	},
 }

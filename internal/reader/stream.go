@@ -55,7 +55,7 @@ func (sr *StreamReader) streamCSV() error {
 	if err != nil {
 		return fmt.Errorf("failed to open file: %w", err)
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	reader := csv.NewReader(file)
 	reader.ReuseRecord = true
@@ -107,7 +107,7 @@ func (sr *StreamReader) streamJSON() error {
 	if err != nil {
 		return fmt.Errorf("failed to open file: %w", err)
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	data, err := io.ReadAll(file)
 	if err != nil {
@@ -195,7 +195,7 @@ func CountLines(filePath string) (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	lineCount := 0
 	buf := make([]byte, 32*1024)

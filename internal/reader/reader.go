@@ -23,7 +23,7 @@ func (r *CSVReader) Read(path string) ([]map[string]interface{}, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to open file: %w", err)
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	csvReader := csv.NewReader(file)
 	csvReader.ReuseRecord = true
@@ -78,7 +78,7 @@ func (r *CSVReader) GetHeaders(path string) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	reader := csv.NewReader(file)
 	headers, err := reader.Read()
@@ -105,7 +105,7 @@ func (r *JSONReader) Read(path string) ([]map[string]interface{}, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to open file: %w", err)
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	data, err := io.ReadAll(file)
 	if err != nil {

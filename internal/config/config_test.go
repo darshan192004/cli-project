@@ -25,13 +25,13 @@ func TestDatabaseConfigConnectionString(t *testing.T) {
 
 func TestLoadWithDefaults(t *testing.T) {
 	originalHome := os.Getenv("HOME")
-	os.Unsetenv("HOME")
-	os.Unsetenv("DB_HOST")
-	os.Unsetenv("DB_PORT")
-	os.Unsetenv("DB_USER")
-	os.Unsetenv("DB_PASSWORD")
-	os.Unsetenv("DB_NAME")
-	os.Unsetenv("DB_SSLMODE")
+	_ = os.Unsetenv("HOME")
+	_ = os.Unsetenv("DB_HOST")
+	_ = os.Unsetenv("DB_PORT")
+	_ = os.Unsetenv("DB_USER")
+	_ = os.Unsetenv("DB_PASSWORD")
+	_ = os.Unsetenv("DB_NAME")
+	_ = os.Unsetenv("DB_SSLMODE")
 
 	cfg, err := Load()
 	if err != nil {
@@ -51,7 +51,7 @@ func TestLoadWithDefaults(t *testing.T) {
 	}
 
 	if originalHome != "" {
-		os.Setenv("HOME", originalHome)
+		_ = os.Setenv("HOME", originalHome)
 	}
 }
 

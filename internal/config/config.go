@@ -71,7 +71,7 @@ func loadEnvFile(path string) error {
 		if idx := strings.Index(line, "="); idx > 0 {
 			key := strings.TrimSpace(line[:idx])
 			value := strings.TrimSpace(line[idx+1:])
-			os.Setenv(key, value)
+			_ = os.Setenv(key, value)
 		}
 	}
 	return nil
