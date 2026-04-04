@@ -115,9 +115,9 @@ func getDB() (database.Backend, error) {
 		password, _ := rootCmd.Flags().GetString("password")
 		dbname, _ := rootCmd.Flags().GetString("dbname")
 
-		cfg, err := loadConfig(host, port, user, password, dbname)
-		if err != nil {
-			return nil, err
+		cfg, loadErr := loadConfig(host, port, user, password, dbname)
+		if loadErr != nil {
+			return nil, loadErr
 		}
 
 		db, err = database.NewBackend(database.BackendPostgres, cfg)
@@ -130,13 +130,6 @@ func getDB() (database.Backend, error) {
 	}
 
 	return db, nil
-}
-
-func closeDB() {
-	if db != nil {
-		db.Close()
-		db = nil
-	}
 }
 
 func Debug(format string, args ...interface{}) {

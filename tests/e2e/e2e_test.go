@@ -86,7 +86,7 @@ func TestCLI_ErrorHandling(t *testing.T) {
 func TestCLI_ConfigCommands(t *testing.T) {
 	tmpDir := t.TempDir()
 	configDir := filepath.Join(tmpDir, ".dataset-cli")
-	os.MkdirAll(configDir, 0755)
+	_ = os.MkdirAll(configDir, 0755)
 
 	t.Run("Config init", func(t *testing.T) {
 		t.Log("Config init test placeholder")

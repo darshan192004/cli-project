@@ -182,7 +182,7 @@ func writeCSV(path string, results []map[string]interface{}) error {
 	for key := range results[0] {
 		headers = append(headers, key)
 	}
-	writer.Write(headers)
+	_ = writer.Write(headers)
 
 	for _, row := range results {
 		var record []string
@@ -193,7 +193,7 @@ func writeCSV(path string, results []map[string]interface{}) error {
 			}
 			record = append(record, val)
 		}
-		writer.Write(record)
+		_ = writer.Write(record)
 	}
 
 	return nil

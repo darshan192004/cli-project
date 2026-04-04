@@ -10,9 +10,6 @@ import (
 	"github.com/spf13/viper"
 )
 
-var setKey string
-var setValue string
-
 var configCmd = &cobra.Command{
 	Use:   "config",
 	Short: "Manage configuration",
@@ -77,7 +74,7 @@ var configSetCmd = &cobra.Command{
 		configPath := configDir + "/config.yaml"
 
 		if _, err := os.Stat(configDir); os.IsNotExist(err) {
-			os.MkdirAll(configDir, 0755)
+			_ = os.MkdirAll(configDir, 0755)
 		}
 
 		viper.SetConfigName("config")
@@ -86,7 +83,7 @@ var configSetCmd = &cobra.Command{
 		viper.AddConfigPath(configDir)
 
 		if _, err := os.Stat(configPath); err == nil {
-			viper.ReadInConfig()
+			_ = viper.ReadInConfig()
 		}
 
 		viper.Set(viperKey, value)
@@ -125,14 +122,14 @@ var configInitCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		cfg := fmt.Sprintf(`database:
+		cfg := `database:
   host: localhost
   port: 5432
   user: postgres
   password: your_password_here
   dbname: dataset
   sslmode: disable
-`)
+`
 
 		if err := os.WriteFile(configPath, []byte(cfg), 0644); err != nil {
 			PrintError("Failed to create config file: %v", err)

@@ -16,7 +16,6 @@ import (
 )
 
 var backupPath string
-var backupFormat string
 
 var backupCmd = &cobra.Command{
 	Use:   "backup [table]",
@@ -101,7 +100,7 @@ func backupAllTables(ctx context.Context, db database.Backend) {
 		backupDir = fmt.Sprintf("backup_%s", time.Now().Format("20060102_150405"))
 	}
 
-	os.MkdirAll(backupDir, 0755)
+	_ = os.MkdirAll(backupDir, 0755)
 
 	for _, table := range tables {
 		color.Cyan.Printf("  Backing up: %s", table)
@@ -183,7 +182,7 @@ Examples:
 
 		if dropTable {
 			color.Yellow.Printf("Dropping existing table: %s\n", backup.TableName)
-			db.Exec(ctx, fmt.Sprintf("DROP TABLE IF EXISTS \"%s\"", backup.TableName))
+			_, _ = db.Exec(ctx, fmt.Sprintf("DROP TABLE IF EXISTS \"%s\"", backup.TableName))
 		}
 
 		schema := &analyzer.Schema{

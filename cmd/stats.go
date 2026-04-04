@@ -97,7 +97,7 @@ func showNullCounts(tableName string, columns []database.ColumnInfo) {
 			db, _ := getDB()
 			if db != nil {
 				row, _ := db.QueryRow(context.Background(), query)
-				row.(interface{ Scan(...interface{}) error }).Scan(&nullCount)
+				_ = row.(interface{ Scan(...interface{}) error }).Scan(&nullCount)
 				if nullCount > 0 {
 					fmt.Printf("  %s: %s NULL values\n",
 						color.Cyan.Sprint(col.Name),

@@ -89,24 +89,6 @@ func (m *Migrator) ImportData(ctx context.Context, schema *analyzer.Schema, reco
 		columns[i] = sanitizeColumnName(col.Name)
 	}
 
-	placeholder := "?"
-	if m.db.Type() == BackendPostgres {
-		placeholder = "$"
-		for i := range columns {
-			placeholder += fmt.Sprintf("%d", i+1)
-			if i < len(columns)-1 {
-				placeholder += ","
-			}
-		}
-		placeholder = ""
-		for i := range columns {
-			if i > 0 {
-				placeholder += ","
-			}
-			placeholder += fmt.Sprintf("$%d", i+1)
-		}
-	}
-
 	placeholders := make([]string, len(columns))
 	for i := range placeholders {
 		if m.db.Type() == BackendPostgres {

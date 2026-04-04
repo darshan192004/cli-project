@@ -114,12 +114,12 @@ Example:
 func askExport(results []map[string]interface{}) {
 	fmt.Print("\nDo you want to export results to a file? (y/n): ")
 	var response string
-	fmt.Scanln(&response)
+	_, _ = fmt.Scanln(&response)
 
 	if response == "y" || response == "Y" {
 		fmt.Print("Enter output file path (e.g., output.json): ")
 		var outputPath string
-		fmt.Scanln(&outputPath)
+		_, _ = fmt.Scanln(&outputPath)
 
 		var data []byte
 		if len(results) > 0 {

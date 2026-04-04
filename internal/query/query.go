@@ -120,7 +120,7 @@ func (e *QueryExecutor) ExecuteAndCount(query string, args ...interface{}) (int6
 	var total int64
 	countQuery := fmt.Sprintf("SELECT COUNT(*) FROM (%s) as subquery", query)
 	row, _ := e.db.QueryRow(ctx, countQuery, args...)
-	row.(interface{ Scan(...interface{}) error }).Scan(&total)
+	_ = row.(interface{ Scan(...interface{}) error }).Scan(&total)
 
 	return total, results, nil
 }

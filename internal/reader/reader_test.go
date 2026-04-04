@@ -118,7 +118,7 @@ func TestGetReader(t *testing.T) {
 	for _, tt := range tests {
 		tmpDir := t.TempDir()
 		path := filepath.Join(tmpDir, "test"+tt.ext)
-		os.WriteFile(path, []byte("test"), 0644)
+		_ = os.WriteFile(path, []byte("test"), 0644)
 
 		_, err := GetReader(path)
 		if (err != nil) != tt.wantErr {
