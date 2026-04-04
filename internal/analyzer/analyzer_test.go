@@ -108,3 +108,27 @@ func TestAnalyzerAnalyzeJSON(t *testing.T) {
 		t.Errorf("len(Columns) = %d; want 3", len(schema.Columns))
 	}
 }
+
+func TestSanitizeColumnName(t *testing.T) {
+	tests := []struct {
+		input    string
+		expected string
+	}{
+		{"ITEM CODE", "item_code"},
+		{"First-Name", "first_name"},
+		{"Name123", "name123"},
+		{"user@email", "user_email"},
+		{"  spaces  ", "spaces"},
+		{"UPPERCASE", "uppercase"},
+		{"MixedCase", "mixedcase"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.input, func(t *testing.T) {
+			result := sanitizeColumnName(tt.input)
+			if result != tt.expected {
+				t.Errorf("sanitizeColumnName(%q) = %q, want %q", tt.input, result, tt.expected)
+			}
+		})
+	}
+}

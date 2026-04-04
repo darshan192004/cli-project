@@ -106,8 +106,8 @@ func TestJSONReaderSingleObject(t *testing.T) {
 
 func TestGetReader(t *testing.T) {
 	tests := []struct {
-		ext      string
-		wantErr  bool
+		ext     string
+		wantErr bool
 	}{
 		{".csv", false},
 		{".json", false},

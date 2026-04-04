@@ -1,11 +1,12 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"os"
 
-	"github.com/spf13/cobra"
 	"dataset-cli/internal/query"
+	"github.com/spf13/cobra"
 )
 
 var transformCmd = &cobra.Command{
@@ -29,9 +30,9 @@ Example:
 			fmt.Printf("Error: %v\n", err)
 			os.Exit(1)
 		}
-		defer db.Close()
 
-		exists, err := db.TableExists(nil, tableName)
+		ctx := context.Background()
+		exists, err := db.TableExists(ctx, tableName)
 		if err != nil || !exists {
 			fmt.Printf("Error: table '%s' does not exist\n", tableName)
 			os.Exit(1)
@@ -42,7 +43,7 @@ Example:
 
 		columns := selectColumns
 		if len(columns) == 0 {
-			schema, _ := db.GetTableSchema(nil, tableName)
+			schema, _ := db.GetTableSchema(ctx, tableName)
 			for _, col := range schema {
 				columns = append(columns, col.Name)
 			}
@@ -62,7 +63,7 @@ Example:
 		}
 
 		fmt.Printf("Results (%d columns):\n\n", len(columns))
-		printResults(results)
+		PrintTable(results)
 
 		askExport(results)
 	},

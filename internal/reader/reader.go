@@ -25,10 +25,10 @@ func (r *CSVReader) Read(path string) ([]map[string]interface{}, error) {
 	}
 	defer file.Close()
 
-	reader := csv.NewReader(file)
-	reader.ReuseRecord = true
+	csvReader := csv.NewReader(file)
+	csvReader.ReuseRecord = true
 
-	headers, err := reader.Read()
+	headers, err := csvReader.Read()
 	if err != nil {
 		return nil, fmt.Errorf("failed to read headers: %w", err)
 	}
@@ -37,7 +37,7 @@ func (r *CSVReader) Read(path string) ([]map[string]interface{}, error) {
 	for _, h := range headers {
 		h = strings.TrimSpace(h)
 		if h != "" {
-			cleanHeaders = append(cleanHeaders, h)
+			cleanHeaders = append(cleanHeaders, SanitizeColumnName(h))
 		}
 	}
 	headers = cleanHeaders
@@ -45,7 +45,7 @@ func (r *CSVReader) Read(path string) ([]map[string]interface{}, error) {
 
 	var records []map[string]interface{}
 	for {
-		record, err := reader.Read()
+		record, err := csvReader.Read()
 		if err == io.EOF {
 			break
 		}
@@ -59,7 +59,12 @@ func (r *CSVReader) Read(path string) ([]map[string]interface{}, error) {
 				break
 			}
 			header := headers[i]
-			row[header] = strings.TrimSpace(value)
+			trimmedValue := strings.TrimSpace(value)
+			if trimmedValue == "" {
+				row[header] = nil
+			} else {
+				row[header] = trimmedValue
+			}
 		}
 		records = append(records, row)
 	}
@@ -81,11 +86,15 @@ func (r *CSVReader) GetHeaders(path string) ([]string, error) {
 		return nil, err
 	}
 
-	for i := range headers {
-		headers[i] = strings.TrimSpace(headers[i])
+	var sanitizedHeaders []string
+	for _, h := range headers {
+		h = strings.TrimSpace(h)
+		if h != "" {
+			sanitizedHeaders = append(sanitizedHeaders, SanitizeColumnName(h))
+		}
 	}
 
-	return headers, nil
+	return sanitizedHeaders, nil
 }
 
 type JSONReader struct{}
@@ -112,7 +121,21 @@ func (r *JSONReader) Read(path string) ([]map[string]interface{}, error) {
 		records = []map[string]interface{}{singleRecord}
 	}
 
-	return records, nil
+	sanitizedRecords := make([]map[string]interface{}, len(records))
+	for i, record := range records {
+		sanitized := make(map[string]interface{})
+		for key, value := range record {
+			sanitizedKey := SanitizeColumnName(key)
+			if value == nil || value == "" {
+				sanitized[sanitizedKey] = nil
+			} else {
+				sanitized[sanitizedKey] = value
+			}
+		}
+		sanitizedRecords[i] = sanitized
+	}
+
+	return sanitizedRecords, nil
 }
 
 func (r *JSONReader) GetHeaders(path string) ([]string, error) {
