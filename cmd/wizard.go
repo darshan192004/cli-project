@@ -37,7 +37,10 @@ func runWizard() {
 			},
 			Default: "Migrate data (CSV/JSON -> PostgreSQL)",
 		}
-		survey.AskOne(qs, &operation)
+		if err := survey.AskOne(qs, &operation); err != nil {
+			color.Red.Printf("Error: %v\n", err)
+			return
+		}
 
 		switch operation {
 		case "Migrate data (CSV/JSON -> PostgreSQL)":
@@ -60,7 +63,7 @@ func runWizard() {
 		}
 
 		color.Gray.Println("\nPress Enter to continue...")
-		fmt.Scanln()
+		fmt.Scanln() //nolint:errcheck
 	}
 }
 
@@ -180,7 +183,10 @@ func interactiveFilter() {
 		Message: "Select table to filter:",
 		Options: tables,
 	}
-	survey.AskOne(qs, &tableName)
+	if err := survey.AskOne(qs, &tableName); err != nil {
+		fmt.Printf("Error: %v\n", err)
+		return
+	}
 
 	db, err := getDB()
 	if err != nil {
@@ -195,7 +201,7 @@ func interactiveFilter() {
 		Message: "Use condition builder to create filters? (Recommended - No SQL knowledge needed)",
 		Default: true,
 	}
-	survey.AskOne(qsBuilder, &useBuilder)
+	_ = survey.AskOne(qsBuilder, &useBuilder)
 
 	if useBuilder {
 		whereClause, err = PrintConditionBuilder(db, tableName)
@@ -209,7 +215,7 @@ func interactiveFilter() {
 		qsWhere := &survey.Input{
 			Message: "Enter WHERE condition (or press Enter for all):",
 		}
-		survey.AskOne(qsWhere, &whereClause)
+		_ = survey.AskOne(qsWhere, &whereClause)
 	}
 
 	var limitStr string
@@ -217,11 +223,11 @@ func interactiveFilter() {
 		Message: "Enter rows per page (default 20):",
 		Default: "20",
 	}
-	survey.AskOne(qsLimit, &limitStr)
+	_ = survey.AskOne(qsLimit, &limitStr)
 
 	limit := 20
 	if limitStr != "" {
-		fmt.Sscanf(limitStr, "%d", &limit)
+		_, _ = fmt.Sscanf(limitStr, "%d", &limit)
 	}
 
 	page := 1
@@ -296,7 +302,7 @@ func interactiveFilter() {
 			Options: []string{"Next Page", "Previous Page", "Go to Specific Page", "Export Current Results", "Back to Main Menu"},
 			Default: "Back to Main Menu",
 		}
-		survey.AskOne(qsNav, &choice)
+		_ = survey.AskOne(qsNav, &choice)
 
 		switch choice {
 		case "Next Page":
@@ -312,9 +318,9 @@ func interactiveFilter() {
 			qsPage := &survey.Input{
 				Message: "Enter page number:",
 			}
-			survey.AskOne(qsPage, &pageStr)
+			_ = survey.AskOne(qsPage, &pageStr)
 			var newPage int
-			fmt.Sscanf(pageStr, "%d", &newPage)
+			_, _ = fmt.Sscanf(pageStr, "%d", &newPage)
 			if newPage > 0 && newPage <= totalPages {
 				page = newPage
 			} else {
@@ -337,7 +343,7 @@ func exportCurrentResults(tableName string, results []map[string]interface{}) {
 		Options: []string{"json", "csv"},
 		Default: "json",
 	}
-	survey.AskOne(qsFormat, &format)
+	_ = survey.AskOne(qsFormat, &format)
 
 	defaultPath := fmt.Sprintf("%s_filtered.%s", tableName, format)
 	if downloads := getDownloadsDir(); downloads != "" {
@@ -349,7 +355,7 @@ func exportCurrentResults(tableName string, results []map[string]interface{}) {
 		Message: "Enter output file path:",
 		Default: defaultPath,
 	}
-	survey.AskOne(qsPath, &outputPath)
+	_ = survey.AskOne(qsPath, &outputPath)
 
 	err := writeExportFile(outputPath, format, results)
 	if err != nil {
@@ -382,7 +388,7 @@ func writeExportFile(path, format string, results []map[string]interface{}) erro
 	for key := range results[0] {
 		cols = append(cols, key)
 	}
-	writer.Write(cols)
+	_ = writer.Write(cols)
 
 	for _, row := range results {
 		record := make([]string, len(cols))
@@ -391,7 +397,7 @@ func writeExportFile(path, format string, results []map[string]interface{}) erro
 				record[i] = fmt.Sprintf("%v", val)
 			}
 		}
-		writer.Write(record)
+		_ = writer.Write(record)
 	}
 
 	return nil
@@ -414,7 +420,7 @@ func interactiveTransform() {
 		Message: "Select table to transform:",
 		Options: tables,
 	}
-	survey.AskOne(qs, &tableName)
+	_ = survey.AskOne(qs, &tableName)
 
 	columns, err := getTableColumns(tableName)
 	if err != nil {
@@ -428,7 +434,7 @@ func interactiveTransform() {
 	qsCol := &survey.Input{
 		Message: "Enter columns to select (comma-separated):",
 	}
-	survey.AskOne(qsCol, &columnsStr)
+	_ = survey.AskOne(qsCol, &columnsStr)
 
 	selectedCols := strings.Split(columnsStr, ",")
 	for i := range selectedCols {
@@ -439,7 +445,7 @@ func interactiveTransform() {
 	qsWhere := &survey.Input{
 		Message: "Enter WHERE condition (optional):",
 	}
-	survey.AskOne(qsWhere, &whereClause)
+	_ = survey.AskOne(qsWhere, &whereClause)
 
 	fmt.Println("\nRunning transform...")
 
@@ -491,18 +497,18 @@ func interactivePaginate() {
 		Message: "Select table to paginate:",
 		Options: tables,
 	}
-	survey.AskOne(qs, &tableName)
+	_ = survey.AskOne(qs, &tableName)
 
 	var pageSizeStr string
 	qsPageSize := &survey.Input{
 		Message: "Enter rows per page (default 20):",
 		Default: "20",
 	}
-	survey.AskOne(qsPageSize, &pageSizeStr)
+	_ = survey.AskOne(qsPageSize, &pageSizeStr)
 
 	pageSize := 20
 	if pageSizeStr != "" {
-		fmt.Sscanf(pageSizeStr, "%d", &pageSize)
+		_, _ = fmt.Sscanf(pageSizeStr, "%d", &pageSize)
 	}
 
 	page := 1
@@ -524,7 +530,7 @@ func interactivePaginate() {
 			Options: []string{"Next Page", "Previous Page", "Go to Specific Page", "Export Current Results", "Back to Main Menu"},
 			Default: "Back to Main Menu",
 		}
-		survey.AskOne(qsNav, &choice)
+		_ = survey.AskOne(qsNav, &choice)
 
 		switch choice {
 		case "Next Page":
@@ -540,9 +546,9 @@ func interactivePaginate() {
 			qsPage := &survey.Input{
 				Message: "Enter page number:",
 			}
-			survey.AskOne(qsPage, &pageStr)
+			_ = survey.AskOne(qsPage, &pageStr)
 			var newPage int
-			fmt.Sscanf(pageStr, "%d", &newPage)
+			_, _ = fmt.Sscanf(pageStr, "%d", &newPage)
 			if newPage > 0 {
 				page = newPage
 			}
@@ -571,7 +577,7 @@ func interactiveSchema() {
 		Message: "Select table to view schema:",
 		Options: tables,
 	}
-	survey.AskOne(qs, &tableName)
+	_ = survey.AskOne(qs, &tableName)
 
 	fmt.Println("\nGetting schema...")
 	schemaCmd.Run(nil, []string{tableName})
@@ -606,7 +612,7 @@ func interactiveExport() {
 		Message: "Select table to export:",
 		Options: tables,
 	}
-	survey.AskOne(qs, &tableName)
+	_ = survey.AskOne(qs, &tableName)
 
 	var format string
 	qsFormat := &survey.Select{
@@ -614,7 +620,7 @@ func interactiveExport() {
 		Options: []string{"json", "csv"},
 		Default: "json",
 	}
-	survey.AskOne(qsFormat, &format)
+	_ = survey.AskOne(qsFormat, &format)
 
 	defaultPath := "export." + format
 	if downloads := getDownloadsDir(); downloads != "" {
@@ -626,7 +632,7 @@ func interactiveExport() {
 		Message: "Enter output file path:",
 		Default: defaultPath,
 	}
-	survey.AskOne(qsPath, &outputPath)
+	_ = survey.AskOne(qsPath, &outputPath)
 
 	fmt.Println("\nExporting data...")
 	exportWithContext(tableName, format, outputPath)
@@ -649,14 +655,14 @@ func interactiveDelete() {
 		Message: "Select table to delete:",
 		Options: tables,
 	}
-	survey.AskOne(qs, &tableName)
+	_ = survey.AskOne(qs, &tableName)
 
 	var confirm bool
 	qsConfirm := &survey.Confirm{
 		Message: fmt.Sprintf("Are you sure you want to delete table '%s'? This cannot be undone.", tableName),
 		Default: false,
 	}
-	survey.AskOne(qsConfirm, &confirm)
+	_ = survey.AskOne(qsConfirm, &confirm)
 
 	if !confirm {
 		fmt.Println("Cancelled.")
@@ -709,7 +715,7 @@ func exportTableData(tableName string) {
 		Options: []string{"json", "csv"},
 		Default: "json",
 	}
-	survey.AskOne(qsFormat, &format)
+	_ = survey.AskOne(qsFormat, &format)
 
 	defaultPath := fmt.Sprintf("%s_export.%s", tableName, format)
 	if downloads := getDownloadsDir(); downloads != "" {
@@ -721,7 +727,7 @@ func exportTableData(tableName string) {
 		Message: "Enter output file path:",
 		Default: defaultPath,
 	}
-	survey.AskOne(qsPath, &outputPath)
+	_ = survey.AskOne(qsPath, &outputPath)
 
 	fmt.Println("\nExporting data...")
 	exportWithContext(tableName, format, outputPath)

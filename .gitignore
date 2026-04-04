@@ -30,3 +30,43 @@ go.work.sum
 # Editor/IDE
 # .idea/
 # .vscode/
+
+# OS-specific
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Build artifacts
+build/
+dist/
+bin/
+
+# Docker cache
+/tmp/.buildx-cache
+
+# Local config
+*.local
+config.local.json
+
+# Temporary files
+*.tmp
+*.bak
+*.swp
+*~
+
+# Logs
+*.log
+logs/
+
+# Data directory
+data/
+
+# OpenCode
+.opencode/
+
+# Generated completions
+completions/
+
+# Exported data
+export.*
+Downloads

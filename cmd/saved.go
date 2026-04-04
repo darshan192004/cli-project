@@ -202,11 +202,11 @@ func loadSavedQueries() []SavedQuery {
 func saveSavedQueries(queries []SavedQuery) {
 	home, _ := os.UserHomeDir()
 	dir := filepath.Join(home, ".dataset-cli")
-	os.MkdirAll(dir, 0755)
+	_ = os.MkdirAll(dir, 0755)
 
 	path := getSavedQueriesPath()
 	data, _ := json.MarshalIndent(queries, "", "  ")
-	os.WriteFile(path, data, 0644)
+	_ = os.WriteFile(path, data, 0644)
 }
 
 func buildSavedQuery(q *SavedQuery) string {
@@ -238,5 +238,5 @@ func init() {
 	savedAddCmd.Flags().StringVar(&savedColumnsList, "columns", "", "Columns to select")
 	savedAddCmd.Flags().IntVar(&savedQueryLimit, "limit", 0, "Result limit")
 	savedAddCmd.Flags().StringVar(&queryDescription, "description", "", "Description")
-	savedAddCmd.MarkFlagRequired("table")
+	_ = savedAddCmd.MarkFlagRequired("table")
 }

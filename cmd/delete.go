@@ -24,7 +24,7 @@ Example:
 		if !force {
 			fmt.Printf("Are you sure you want to delete table '%s'? This action cannot be undone. (y/N): ", tableName)
 			var confirm string
-			fmt.Scanln(&confirm)
+			_, _ = fmt.Scanln(&confirm)
 			if confirm != "y" && confirm != "Y" {
 				fmt.Println("Cancelled.")
 				return

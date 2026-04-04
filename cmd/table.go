@@ -38,7 +38,7 @@ func NewTableFormatter(results []map[string]interface{}) *TableFormatter {
 func getTerminalWidth() (int, error) {
 	width := 100
 	if envW := os.Getenv("COLUMNS"); envW != "" {
-		fmt.Sscanf(envW, "%d", &width)
+		_, _ = fmt.Sscanf(envW, "%d", &width)
 		return width, nil
 	}
 	return width, nil

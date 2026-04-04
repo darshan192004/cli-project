@@ -113,7 +113,7 @@ func (cb *ConditionBuilder) addCondition() (*Condition, bool) {
 				qsCustom := &survey.Input{
 					Message: "Enter custom value:",
 				}
-				survey.AskOne(qsCustom, &cond.Value)
+				_ = survey.AskOne(qsCustom, &cond.Value)
 			} else {
 				cond.Value = selectedValue
 			}
@@ -121,7 +121,7 @@ func (cb *ConditionBuilder) addCondition() (*Condition, bool) {
 			qsCustom := &survey.Input{
 				Message: "Enter value (or search term for LIKE):",
 			}
-			survey.AskOne(qsCustom, &cond.Value)
+			_ = survey.AskOne(qsCustom, &cond.Value)
 		}
 	}
 
@@ -132,7 +132,7 @@ func (cb *ConditionBuilder) addCondition() (*Condition, bool) {
 			Options: []string{"AND", "OR"},
 			Default: "AND",
 		}
-		survey.AskOne(qsConn, &connector)
+		_ = survey.AskOne(qsConn, &connector)
 		cond.Connector = connector
 	}
 
@@ -141,7 +141,9 @@ func (cb *ConditionBuilder) addCondition() (*Condition, bool) {
 		Message: "Add another condition?",
 		Default: false,
 	}
-	survey.AskOne(qsMore, &addMore)
+	if err := survey.AskOne(qsMore, &addMore); err != nil {
+		return nil, false
+	}
 
 	return cond, addMore
 }

@@ -54,7 +54,7 @@ func IsTerminal() bool {
 }
 
 func DisableColors() {
-	color.Reset()
+	color.Enable = false
 }
 
 func PrintBox(title, content string) {
