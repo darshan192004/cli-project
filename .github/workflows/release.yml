@@ -259,7 +259,7 @@ jobs:
       - name: Generate NPM Package
         run: |
           mkdir -p npm-package/bin npm-package/scripts
-
+          
           cp README.md npm-package/
           
           cat <<EOF > npm-package/package.json
@@ -279,7 +279,8 @@ jobs:
             },
             "files": [
               "bin/",
-              "scripts/"
+              "scripts/",
+              "README.md"
             ]
           }
           EOF
