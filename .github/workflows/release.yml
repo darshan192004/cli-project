@@ -270,16 +270,22 @@ jobs:
               "url": "git+https://github.com/${{ github.repository }}.git"
             },
             "bin": {
-              "dataset-cli": "bin/launcher.js"
+              "dataset-cli": "./bin/launcher.js"
             },
             "scripts": {
-              "postinstall": "node scripts/install.js"
-            }
+              "postinstall": "node ./scripts/install.js"
+            },
+            "files": [
+              "bin/",
+              "scripts/"
+            ]
           }
           EOF
           
           cp bin/launcher.js npm-package/bin/
           cp scripts/install.js npm-package/scripts/
+          chmod +x npm-package/bin/launcher.js
+          chmod +x npm-package/scripts/install.js
 
       - name: Publish to NPM
         working-directory: npm-package
