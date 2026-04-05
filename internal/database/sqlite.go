@@ -7,7 +7,7 @@ import (
 	"os"
 	"path/filepath"
 
-	_ "github.com/mattn/go-sqlite3"
+	_ "github.com/glebarez/go-sqlite"
 )
 
 type SQLiteDB struct {
@@ -28,7 +28,7 @@ func ConnectSQLite(dbPath string) (*SQLiteDB, error) {
 		dbPath = filepath.Join(dsDir, "dataset.db")
 	}
 
-	db, err := sql.Open("sqlite3", dbPath+"?_journal_mode=WAL&_foreign_keys=ON")
+	db, err := sql.Open("sqlite", dbPath+"?_journal_mode=WAL&_foreign_keys=ON")
 	if err != nil {
 		return nil, fmt.Errorf("failed to open database: %w", err)
 	}
