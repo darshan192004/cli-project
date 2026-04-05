@@ -1,228 +1,243 @@
 # Dataset CLI
 
-A powerful, Google-quality CLI tool for processing and querying datasets with PostgreSQL.
+A powerful CLI tool for processing and querying datasets with support for SQLite, PostgreSQL, and TursoDB (cloud SQLite).
 
-![Dataset CLI](https://img.shields.io/badge/version-1.0.0-blue.svg)
-![Go](https://img.shields.io/badge/Go-1.21+-00ADD8.svg)
-![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16+-336791.svg)
+![License](https://img.shields.io/badge/license-MIT-blue.svg)
+![Go](https://img.shields.io/badge/Go-1.26+-00ADD8.svg)
+![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-green.svg)
 
 ## Features
 
-- 📊 **Smart Data Import** - Import CSV/JSON files with automatic type detection
-- 🔍 **Visual Query Builder** - No SQL knowledge required
-- 🎯 **Multiple Output Formats** - Table, JSON, CSV, Markdown, Pretty
-- ⚡ **Streaming Import** - Handle large files efficiently
-- 🔧 **Data Validation** - Pre-flight checks before import
-- 🎨 **Beautiful CLI** - Color-coded output, progress bars, spinners
-- 📈 **Statistics** - Table insights and data profiling
-- 🐳 **Docker Ready** - One-command setup
+- **Multiple Databases** - Works with SQLite (default), PostgreSQL, and TursoDB cloud
+- **Smart Data Import** - Import CSV/JSON files with automatic type detection
+- **Beautiful CLI** - Color-coded output, progress bars, interactive prompts
+- **No SQL Required** - Interactive query builder for non-technical users
+- **Streaming Import** - Handle large files efficiently with low memory usage
+- **Data Validation** - Pre-flight checks before import
+- **Multiple Output Formats** - Table, JSON, CSV, Markdown, Pretty print
 
-## Quick Start
+## Installation
 
-### Option 1: Download Binary
-
-Download the latest release for your platform from [GitHub Releases](https://github.com/your-repo/releases).
-
-### Option 2: Build from Source
+### npm (Recommended)
 
 ```bash
-git clone https://github.com/your-repo/dataset-cli.git
-cd dataset-cli
+npm install -g dataset-cli
+```
+
+Works on Windows, macOS, and Linux. Binary is downloaded automatically on first run.
+
+### Download Binary
+
+Download the latest release for your platform from [GitHub Releases](https://github.com/darshan192004/cli-project/releases).
+
+### Docker
+
+```bash
+docker pull darshan192004/dataset-cli
+docker run --rm darshan192004/dataset-cli --help
+```
+
+### Build from Source
+
+```bash
+git clone https://github.com/darshan192004/cli-project.git
+cd cli-project
 go build -o dataset-cli .
 ```
 
-### Option 3: Docker
+## Quick Start
 
 ```bash
-# Start PostgreSQL
-make start
+# Start interactive mode
+dataset-cli
 
-# Run CLI
-make run
+# Import a CSV file
+dataset-cli migrate data.csv
 
-# Or directly
-docker compose up -d postgres
-docker compose run --rm dataset-cli
+# Filter data with SQL-like syntax
+dataset-cli filter users --where "age > 25"
+
+# Export to JSON
+dataset-cli export users --output data.json
+
+# Check system health
+dataset-cli doctor
 ```
 
-## Usage
+## Commands
 
-### Interactive Mode
-
-```bash
-./dataset-cli
-```
-
-### Migrate Data
+### `migrate` - Import Data
 
 ```bash
-# Basic import
-./dataset-cli migrate data.csv
+# Basic import (creates table from filename)
+dataset-cli migrate data.csv
+
+# Specify table name
+dataset-cli migrate data.csv --table-name users
 
 # With options
-./dataset-cli migrate data.csv \
-  --table-name my_data \
-  --drop \
-  --skip-errors \
-  --progress
+dataset-cli migrate data.csv \
+  --table-name users \
+  --drop \           # Drop existing table first
+  --skip-errors \    # Continue on errors
+  --progress         # Show progress bar
 
-# Dry run (preview)
-./dataset-cli migrate data.csv --dry-run
+# Use PostgreSQL
+dataset-cli migrate data.csv --postgres
+
+# Use TursoDB Cloud
+dataset-cli migrate data.csv --cloud
 ```
 
-### Filter Data
+### `filter` - Query Data
 
 ```bash
-# Using condition builder (interactive)
-./dataset-cli filter
+# Interactive mode
+dataset-cli filter
 
-# Using SQL
-./dataset-cli filter users --where "age > 25" --limit 10
+# SQL-like query
+dataset-cli filter users --where "age > 25 AND city = 'NYC'" --limit 10
 
-# All data
-./dataset-cli filter users
+# Simple query
+dataset-cli filter users
 ```
 
-### Transform Data
+### `transform` - Select Columns
 
 ```bash
-./dataset-cli transform users --columns name,email,age
+# Select specific columns
+dataset-cli transform users --columns name,email,age
 
 # With filter
-./dataset-cli transform users \
+dataset-cli transform users \
   --columns name,email \
   --where "city = 'New York'"
 ```
 
-### Export Data
+### `export` - Export Data
 
 ```bash
 # JSON (default)
-./dataset-cli export users --output data.json
+dataset-cli export users --output data.json
 
 # CSV
-./dataset-cli export users --output data.csv --format csv
+dataset-cli export users --output data.csv --format csv
 
-# Markdown (for docs)
-./dataset-cli export users --output data.md --format md
+# Markdown (great for docs)
+dataset-cli export users --output data.md --format md
 
-# Pretty (terminal)
-./dataset-cli export users --format pretty
+# Pretty print to terminal
+dataset-cli export users --format pretty
 ```
 
-### View Schema
+### `schema` - View Table Schema
 
 ```bash
-./dataset-cli schema users
+dataset-cli schema users
 ```
 
-### Statistics
+### `stats` - Table Statistics
 
 ```bash
 # Basic stats
-./dataset-cli stats users
+dataset-cli stats users
 
-# With NULL counts
-./dataset-cli stats users --show-nulls
+# Include NULL counts
+dataset-cli stats users --show-nulls
 ```
 
-### Delete Table
+### `aggregate` - Aggregate Functions
 
 ```bash
-# With confirmation
-./dataset-cli delete users
+# Count records
+dataset-cli aggregate users --operation count
 
-# Force (no confirmation)
-./dataset-cli delete users --force
+# Sum a column
+dataset-cli aggregate orders --operation sum --column amount
+
+# Average, min, max
+dataset-cli aggregate users --operation avg --column age
 ```
 
-### Health Check
+### `backup` & `restore` - Data Backup
 
 ```bash
-./dataset-cli doctor
+# Backup a table
+dataset-cli backup users --output backup.json
+
+# Restore from backup
+dataset-cli restore users --input backup.json
+```
+
+### `doctor` - System Diagnostics
+
+```bash
+dataset-cli doctor
 ```
 
 ## Global Flags
 
 ```bash
-./dataset-cli [command] [flags]
+dataset-cli [command] [flags]
 
 Flags:
-  -v, --verbose      Enable verbose output
-      --dry-run     Show what would be done
-      --no-color    Disable colors
-      --config      Config file path
-      --host        Database host
-      --port        Database port
-      --user        Database user
-      --password    Database password
-      --dbname      Database name
+  -v, --verbose           Enable verbose output
+      --dry-run           Show what would be done without executing
+      --no-color          Disable color output
+      --config string     Config file path (default ~/.dataset-cli.yaml)
+      --postgres          Use PostgreSQL instead of SQLite
+      --cloud             Use TursoDB cloud (requires LIBSQL_URL env var)
+      --host string       Database host (overrides config)
+      --port int          Database port (overrides config)
+      --user string       Database user (overrides config)
+      --password string   Database password (overrides config)
+      --dbname string     Database name (overrides config)
 ```
 
 ## Configuration
 
-Create `~/.dataset-cli/.env` or `~/.dataset-cli/config.yaml`:
+Create `~/.dataset-cli.yaml`:
 
-```env
-DB_HOST=localhost
-DB_PORT=5432
-DB_USER=postgres
-DB_PASSWORD=postgres
-DB_NAME=dataset
-DB_SSLMODE=disable
+```yaml
+database:
+  host: localhost
+  port: 5432
+  user: postgres
+  password: postgres
+  dbname: dataset
+  sslmode: disable
 ```
+
+Or use environment variables:
+
+```bash
+export DB_HOST=localhost
+export DB_PORT=5432
+export DB_USER=postgres
+export DB_PASSWORD=secret
+export DB_NAME=dataset
+export LIBSQL_URL=libsql://your-db.turso.io?authToken=your-token
+```
+
+## Database Support
+
+| Database  | CGO Required | Notes                           |
+|-----------|--------------|--------------------------------|
+| SQLite    | No           | Default, stores at ~/.dataset-cli/ |
+| PostgreSQL| No           | Use `--postgres` flag           |
+| TursoDB   | No           | Cloud SQLite, use `--cloud` flag |
 
 ## Shell Completion
 
-### Bash
-
 ```bash
-# Add to ~/.bashrc
-source /path/to/completions/bash
+# Bash
+dataset-cli completion bash >> ~/.bashrc
 
-# Or use dataset-cli
-./dataset-cli completion bash > /etc/bash_completion.d/dataset-cli
-```
+# Zsh
+dataset-cli completion zsh >> ~/.zshrc
 
-### Zsh
-
-```bash
-# Add to ~/.zshrc
-source /path/to/completions/zsh
-
-# Or use dataset-cli
-./dataset-cli completion zsh > "${fpath[1]}/_dataset-cli"
-```
-
-## Architecture
-
-```
-dataset-cli/
-├── cmd/                    # CLI commands
-│   ├── migrate.go         # Import data
-│   ├── filter.go           # Filter queries
-│   ├── transform.go        # Column selection
-│   ├── export.go           # Export data
-│   ├── schema.go           # View schema
-│   ├── stats.go            # Statistics
-│   ├── delete.go           # Delete tables
-│   ├── doctor.go           # Health checks
-│   ├── wizard.go           # Interactive mode
-│   ├── condition_builder.go # Query builder UI
-│   ├── table.go            # Table formatting
-│   └── format.go           # Output formatters
-├── internal/
-│   ├── analyzer/           # Type detection
-│   ├── database/           # DB connection
-│   ├── query/              # Query builder
-│   ├── reader/             # File reading
-│   ├── validator/          # Pre-flight checks
-│   ├── progress/           # Progress bars
-│   └── errors/             # Error handling
-├── completions/            # Shell completions
-├── Dockerfile
-├── docker-compose.yml
-└── Makefile
+# Fish
+dataset-cli completion fish > ~/.config/fish/completions/dataset-cli.fish
 ```
 
 ## Development
@@ -231,33 +246,23 @@ dataset-cli/
 # Build
 make build
 
-# Run
-make run
-
-# Test
+# Run tests
 go test ./...
 
-# Clean
-make clean
+# Run with PostgreSQL
+make start    # Start PostgreSQL
+make run      # Run CLI
 ```
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Run tests
-5. Submit a pull request
 
 ## License
 
 MIT License - see [LICENSE](LICENSE) for details.
 
-## Support
+## Links
 
-- 📖 [Documentation](docs/)
-- 🐛 [Issues](https://github.com/your-repo/issues)
-- 💬 [Discussions](https://github.com/your-repo/discussions)
+- [GitHub Repository](https://github.com/darshan192004/cli-project)
+- [Issue Tracker](https://github.com/darshan192004/cli-project/issues)
+- [npm Package](https://www.npmjs.com/package/dataset-cli)
 
 ---
 
