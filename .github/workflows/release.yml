@@ -103,6 +103,10 @@ jobs:
             goarch: amd64
             ext: '.exe'
             cgo: 0
+          - goos: windows
+            goarch: arm64
+            ext: '.exe'
+            cgo: 0
 
     steps:
       - name: Checkout code

@@ -3,15 +3,15 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const https = require('https');
+const crypto = require('crypto');
 
-// 1. Fixed Map to match your release.yml naming exactly
 const platformMap = {
   'darwin-x64': 'darwin-amd64',
   'darwin-arm64': 'darwin-arm64',
   'linux-x64': 'linux-amd64',
   'linux-arm64': 'linux-arm64',
   'win32-x64': 'windows-amd64.exe',
-  'win32-arm64': 'windows-arm64.exe' // Added for safety
+  'win32-arm64': 'windows-arm64.exe'
 };
 
 const platform = `${os.platform()}-${os.arch()}`;
@@ -19,6 +19,7 @@ const suffix = platformMap[platform];
 
 if (!suffix) {
   console.error(`❌ Unsupported platform: ${platform}`);
+  console.error('Supported platforms: darwin-x64, darwin-arm64, linux-x64, linux-arm64, win32-x64, win32-arm64');
   process.exit(1);
 }
 
@@ -26,47 +27,128 @@ const installDir = path.join(__dirname, '..', 'bin');
 const fullBinaryName = `dataset-cli-${suffix}`;
 const destPath = path.join(installDir, os.platform() === 'win32' ? 'dataset-cli.exe' : 'dataset-cli');
 
-// 2. Clear previous failed attempts
 if (!fs.existsSync(installDir)) {
   fs.mkdirSync(installDir, { recursive: true });
 }
 
-// 3. Get version from package.json
 const packageJson = require(path.join(__dirname, '..', 'package.json'));
 const version = packageJson.version;
 const repo = 'darshan192004/cli-project';
 const downloadUrl = `https://github.com/${repo}/releases/download/v${version}/${fullBinaryName}`;
+const checksumUrl = `https://github.com/${repo}/releases/download/v${version}/${fullBinaryName}.sha256`;
 
-console.log(`☁️ Downloading dataset-cli v${version} for ${platform}...`);
+const MAX_RETRIES = 3;
+const RETRY_DELAY = 1000;
 
-function download(url) {
-  https.get(url, (res) => {
-    // Handle Redirects (Important for GitHub)
-    if (res.statusCode === 301 || res.statusCode === 302) {
-      return download(res.headers.location);
-    }
-
-    if (res.statusCode !== 200) {
-      console.error(`❌ Download failed! HTTP Status: ${res.statusCode}`);
-      console.error(`URL attempted: ${url}`);
-      process.exit(1);
-    }
-
-    const file = fs.createWriteStream(destPath);
-    res.pipe(file);
-
-    file.on('finish', () => {
-      file.close();
-      // 4. Only chmod on Non-Windows systems
-      if (os.platform() !== 'win32') {
-        fs.chmodSync(destPath, 0o755);
-      }
-      console.log(`✅ Success! Installed to ${destPath}`);
-    });
-  }).on('error', (err) => {
-    console.error(`❌ Request Error: ${err.message}`);
-    process.exit(1);
-  });
+function delay(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-download(downloadUrl);
+async function downloadFile(url, isChecksum = false) {
+  let lastError;
+  
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      const result = await new Promise((resolve, reject) => {
+        https.get(url, (res) => {
+          if (res.statusCode === 301 || res.statusCode === 302) {
+            return resolve(downloadFile(res.headers.location, isChecksum));
+          }
+          
+          if (res.statusCode !== 200) {
+            reject(new Error(`HTTP ${res.statusCode}`));
+            return;
+          }
+          
+          const chunks = [];
+          res.on('data', chunk => chunks.push(chunk));
+          res.on('end', () => {
+            const data = Buffer.concat(chunks);
+            if (isChecksum) {
+              resolve(data.toString('utf8').trim());
+            } else {
+              resolve(data);
+            }
+          });
+          res.on('error', reject);
+        }).on('error', reject);
+      });
+      return result;
+    } catch (err) {
+      lastError = err;
+      if (attempt < MAX_RETRIES) {
+        const waitTime = RETRY_DELAY * attempt;
+        console.log(`⚠️  Attempt ${attempt} failed, retrying in ${waitTime}ms...`);
+        await delay(waitTime);
+      }
+    }
+  }
+  
+  throw lastError;
+}
+
+function verifyChecksum(filePath, expectedChecksum) {
+  const fileBuffer = fs.readFileSync(filePath);
+  const hash = crypto.createHash('sha256').update(fileBuffer).digest('hex');
+  
+  const parts = expectedChecksum.split(/\s+/);
+  const checksumParts = parts[0];
+  
+  if (hash !== checksumParts) {
+    console.error('❌ Checksum verification failed!');
+    console.error(`Expected: ${checksumParts}`);
+    console.error(`Got: ${hash}`);
+    return false;
+  }
+  return true;
+}
+
+async function install() {
+  console.log(`☁️  Downloading dataset-cli v${version} for ${platform}...`);
+  
+  let checksum;
+  try {
+    checksum = await downloadFile(checksumUrl, true);
+  } catch (err) {
+    console.warn(`⚠️  Warning: Could not download checksum file: ${err.message}`);
+    console.warn('Proceeding without checksum verification...');
+    checksum = null;
+  }
+  
+  try {
+    const binaryData = await downloadFile(downloadUrl);
+    
+    fs.writeFileSync(destPath, binaryData);
+    
+    if (checksum && !verifyChecksum(destPath, checksum)) {
+      fs.unlinkSync(destPath);
+      console.error('❌ Installation failed: checksum mismatch');
+      process.exit(1);
+    }
+    
+    if (os.platform() !== 'win32') {
+      try {
+        fs.chmodSync(destPath, 0o755);
+      } catch (chmodErr) {
+        console.warn(`⚠️  Warning: Could not set executable permissions: ${chmodErr.message}`);
+      }
+    }
+    
+    const stat = fs.statSync(destPath);
+    if (stat.size === 0) {
+      fs.unlinkSync(destPath);
+      console.error('❌ Installation failed: downloaded file is empty');
+      process.exit(1);
+    }
+    
+    console.log(`✅ Success! Installed to ${destPath}`);
+    console.log(`   Size: ${(stat.size / 1024 / 1024).toFixed(2)} MB`);
+    
+  } catch (err) {
+    console.error(`❌ Download failed: ${err.message}`);
+    console.error(`URL attempted: ${downloadUrl}`);
+    process.exit(1);
+  }
+}
+
+install();

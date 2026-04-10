@@ -49,8 +49,10 @@ func paginateWithContext(ctx context.Context, tableName string, pageNum, size in
 
 	var total int64
 	countQuery, _ := q.Count("")
-	row, _ := db.QueryRow(ctx, countQuery)
-	_ = row.(interface{ Scan(...interface{}) error }).Scan(&total)
+	row, err := db.QueryRow(ctx, countQuery)
+	if err == nil && row != nil {
+		_ = row.(interface{ Scan(...interface{}) error }).Scan(&total)
+	}
 
 	totalPages := int(total) / size
 	if int(total)%size > 0 {
@@ -127,8 +129,10 @@ Example:
 
 		var total int64
 		countQuery, _ := q.Count("")
-		row, _ := db.QueryRow(ctx, countQuery)
-		_ = row.(interface{ Scan(...interface{}) error }).Scan(&total)
+		row, err := db.QueryRow(ctx, countQuery)
+		if err == nil && row != nil {
+			_ = row.(interface{ Scan(...interface{}) error }).Scan(&total)
+		}
 
 		totalPages := int(total) / pageSize
 		if int(total)%pageSize > 0 {

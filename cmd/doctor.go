@@ -105,25 +105,33 @@ func runDiagnostics() {
 		defer cancel()
 
 		var version string
-		row, _ := db.QueryRow(ctx, "SELECT version()")
-		if err := row.(interface{ Scan(...interface{}) error }).Scan(&version); err != nil {
-			color.Yellow.Printf("  Version: Unable to determine\n")
+		row, err := db.QueryRow(ctx, "SELECT version()")
+		if err == nil && row != nil {
+			if err := row.(interface{ Scan(...interface{}) error }).Scan(&version); err != nil {
+				color.Yellow.Printf("  Version: Unable to determine\n")
+			} else {
+				shortVersion := strings.Split(version, " ")[0:2]
+				color.Green.Printf("  Version: %s\n", strings.Join(shortVersion, " "))
+			}
 		} else {
-			shortVersion := strings.Split(version, " ")[0:2]
-			color.Green.Printf("  Version: %s\n", strings.Join(shortVersion, " "))
+			color.Yellow.Printf("  Version: Unable to determine\n")
 		}
 
 		var dbSize int64
-		row, _ = db.QueryRow(ctx, "SELECT pg_database_size(current_database())")
-		if err := row.(interface{ Scan(...interface{}) error }).Scan(&dbSize); err == nil {
-			mb := float64(dbSize) / (1024 * 1024)
-			color.Green.Printf("  Database Size: %.1f MB\n", mb)
+		row, err = db.QueryRow(ctx, "SELECT pg_database_size(current_database())")
+		if err == nil && row != nil {
+			if err := row.(interface{ Scan(...interface{}) error }).Scan(&dbSize); err == nil {
+				mb := float64(dbSize) / (1024 * 1024)
+				color.Green.Printf("  Database Size: %.1f MB\n", mb)
+			}
 		}
 
 		var tableCount int
-		row, _ = db.QueryRow(ctx, "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public'")
-		if err := row.(interface{ Scan(...interface{}) error }).Scan(&tableCount); err == nil {
-			color.Green.Printf("  Tables: %d\n", tableCount)
+		row, err = db.QueryRow(ctx, "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public'")
+		if err == nil && row != nil {
+			if err := row.(interface{ Scan(...interface{}) error }).Scan(&tableCount); err == nil {
+				color.Green.Printf("  Tables: %d\n", tableCount)
+			}
 		}
 	}
 

@@ -96,12 +96,14 @@ func showNullCounts(tableName string, columns []database.ColumnInfo) {
 			query := fmt.Sprintf("SELECT COUNT(*) FROM \"%s\" WHERE \"%s\" IS NULL", tableName, col.Name)
 			db, _ := getDB()
 			if db != nil {
-				row, _ := db.QueryRow(context.Background(), query)
-				_ = row.(interface{ Scan(...interface{}) error }).Scan(&nullCount)
-				if nullCount > 0 {
-					fmt.Printf("  %s: %s NULL values\n",
-						color.Cyan.Sprint(col.Name),
-						color.Yellow.Sprint(nullCount))
+				row, err := db.QueryRow(context.Background(), query)
+				if err == nil && row != nil {
+					_ = row.(interface{ Scan(...interface{}) error }).Scan(&nullCount)
+					if nullCount > 0 {
+						fmt.Printf("  %s: %s NULL values\n",
+							color.Cyan.Sprint(col.Name),
+							color.Yellow.Sprint(nullCount))
+					}
 				}
 			}
 		}

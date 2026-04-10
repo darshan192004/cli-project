@@ -67,10 +67,16 @@ Example:
 		}
 
 		var totalCount int64
-		row, _ := db.QueryRow(ctx, countQuery)
-		if err := row.(interface{ Scan(...interface{}) error }).Scan(&totalCount); err != nil {
+		row, err := db.QueryRow(ctx, countQuery)
+		if err != nil {
 			fmt.Printf("Error counting records: %v\n", err)
 			os.Exit(1)
+		}
+		if row != nil {
+			if err := row.(interface{ Scan(...interface{}) error }).Scan(&totalCount); err != nil {
+				fmt.Printf("Error scanning count: %v\n", err)
+				os.Exit(1)
+			}
 		}
 
 		totalPages := int(totalCount) / limit

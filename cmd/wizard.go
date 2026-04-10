@@ -242,10 +242,16 @@ func interactiveFilter() {
 		}
 
 		var totalCount int64
-		row, _ := db.QueryRow(ctx, countQuery)
-		if err := row.(interface{ Scan(...interface{}) error }).Scan(&totalCount); err != nil {
+		row, err := db.QueryRow(ctx, countQuery)
+		if err != nil {
 			fmt.Printf("Error counting: %v\n", err)
 			return
+		}
+		if row != nil {
+			if err := row.(interface{ Scan(...interface{}) error }).Scan(&totalCount); err != nil {
+				fmt.Printf("Error scanning count: %v\n", err)
+				return
+			}
 		}
 
 		if totalCount == 0 {
