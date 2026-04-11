@@ -463,6 +463,7 @@ jobs:
           else
             VERSION="${GITHUB_REF#refs/tags/}"
           fi
+          VERSION="${VERSION#v}"
           echo "VERSION=$VERSION" >> $GITHUB_ENV
 
       - name: Download binary (Linux)
