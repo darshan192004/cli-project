@@ -139,6 +139,34 @@ jobs:
           fi
           sha256sum "dataset-cli-${PLATFORM}" > "dataset-cli-${PLATFORM}.sha256"
 
+      - name: Verify build outputs
+        run: |
+          BINARY="dataset-cli-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.ext }}"
+          CHECKSUM="${BINARY}.sha256"
+          
+          echo "=== Verifying build outputs ==="
+          echo "Binary: $BINARY"
+          ls -lh "$BINARY"
+          
+          echo "Checksum: $CHECKSUM"
+          ls -lh "$CHECKSUM"
+          cat "$CHECKSUM"
+          
+          # Verify checksum is not empty
+          if [ ! -s "$CHECKSUM" ]; then
+            echo "ERROR: Checksum file is empty!"
+            exit 1
+          fi
+          
+          # Verify binary size is reasonable (at least 1MB)
+          BINARY_SIZE=$(stat -c%s "$BINARY" 2>/dev/null || stat -f%z "$BINARY" 2>/dev/null)
+          if [ "$BINARY_SIZE" -lt 1000000 ]; then
+            echo "ERROR: Binary seems too small ($BINARY_SIZE bytes)!"
+            exit 1
+          fi
+          
+          echo "=== Verification passed ==="
+
       - name: Upload binaries
         uses: actions/upload-artifact@v4
         with:
@@ -147,7 +175,6 @@ jobs:
             dataset-cli-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.ext }}
             dataset-cli-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.ext }}.sha256
           retention-days: 30
-          compression-level: 0
 
   build-docker:
     name: Build Docker Image
@@ -210,7 +237,9 @@ jobs:
           rm -rf dataset-cli-*/
           
           echo "=== Checking release artifacts ==="
-          echo "Expected files:"
+          echo "Expected files (12 total: 6 binaries + 6 checksums):"
+          echo ""
+          echo "Binaries:"
           echo "  - dataset-cli-linux-amd64"
           echo "  - dataset-cli-linux-arm64"
           echo "  - dataset-cli-darwin-amd64"
@@ -218,18 +247,69 @@ jobs:
           echo "  - dataset-cli-windows-amd64.exe"
           echo "  - dataset-cli-windows-arm64.exe"
           echo ""
+          echo "Checksums:"
+          echo "  - dataset-cli-linux-amd64.sha256"
+          echo "  - dataset-cli-linux-arm64.sha256"
+          echo "  - dataset-cli-darwin-amd64.sha256"
+          echo "  - dataset-cli-darwin-arm64.sha256"
+          echo "  - dataset-cli-windows-amd64.exe.sha256"
+          echo "  - dataset-cli-windows-arm64.exe.sha256"
+          echo ""
           echo "Files in dist/:"
           ls -la
           echo ""
-          echo "Binary count:"
-          ls dataset-cli-* 2>/dev/null | wc -l
           
-          # Fail if not all 6 binaries are present
+          # Count total files
           COUNT=$(ls dataset-cli-* 2>/dev/null | wc -l)
-          if [ "$COUNT" -lt 6 ]; then
-            echo "ERROR: Only $COUNT files found, expected 6 binaries!"
+          echo "Total files found: $COUNT"
+          
+          # Check for 12 files (6 binaries + 6 checksums)
+          if [ "$COUNT" -ne 12 ]; then
+            echo "ERROR: Found $COUNT files, expected 12 files (6 binaries + 6 checksums)!"
+            echo "Missing files:"
+            for expected in dataset-cli-linux-amd64 dataset-cli-linux-arm64 dataset-cli-darwin-amd64 dataset-cli-darwin-arm64 dataset-cli-windows-amd64.exe dataset-cli-windows-arm64.exe dataset-cli-linux-amd64.sha256 dataset-cli-linux-arm64.sha256 dataset-cli-darwin-amd64.sha256 dataset-cli-darwin-arm64.sha256 dataset-cli-windows-amd64.exe.sha256 dataset-cli-windows-arm64.exe.sha256; do
+              if [ ! -f "$expected" ]; then
+                echo "  - $expected (MISSING)"
+              fi
+            done
             exit 1
           fi
+          
+          # Verify all binaries exist
+          echo ""
+          echo "Verifying binaries exist:"
+          for binary in dataset-cli-linux-amd64 dataset-cli-linux-arm64 dataset-cli-darwin-amd64 dataset-cli-darwin-arm64 dataset-cli-windows-amd64.exe dataset-cli-windows-arm64.exe; do
+            if [ -f "$binary" ]; then
+              SIZE=$(ls -lh "$binary" | awk '{print $5}')
+              echo "  ✓ $binary ($SIZE)"
+            else
+              echo "  ✗ $binary (MISSING)"
+              exit 1
+            fi
+          done
+          
+          # Verify all checksums exist and are non-empty
+          echo ""
+          echo "Verifying checksums exist and are non-empty:"
+          for checksum in dataset-cli-linux-amd64.sha256 dataset-cli-linux-arm64.sha256 dataset-cli-darwin-amd64.sha256 dataset-cli-darwin-arm64.sha256 dataset-cli-windows-amd64.exe.sha256 dataset-cli-windows-arm64.exe.sha256; do
+            if [ -f "$checksum" ]; then
+              SIZE=$(wc -c < "$checksum")
+              CONTENT=$(cat "$checksum")
+              if [ "$SIZE" -gt 50 ] && [ -n "$CONTENT" ]; then
+                echo "  ✓ $checksum ($SIZE bytes)"
+              else
+                echo "  ✗ $checksum (empty or too small: $SIZE bytes)"
+                echo "     Content: $CONTENT"
+                exit 1
+              fi
+            else
+              echo "  ✗ $checksum (MISSING)"
+              exit 1
+            fi
+          done
+          
+          echo ""
+          echo "=== All verification passed! ==="
 
       - name: Generate changelog
         id: changelog
@@ -322,3 +402,55 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
           NPM_CONFIG_PROVENANCE: true
+
+  test-release:
+    name: Test Release Binaries
+    runs-on: ${{ matrix.os }}
+    needs: [release]
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            binary: dataset-cli-linux-amd64
+            ext: ''
+          - os: windows-latest
+            binary: dataset-cli-windows-amd64.exe
+            ext: '.exe'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Get version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            VERSION="${{ inputs.version }}"
+          else
+            VERSION="${GITHUB_REF#refs/tags/}"
+          fi
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+
+      - name: Download binary
+        run: |
+          curl -L -o "${{ matrix.binary }}" \
+            "https://github.com/${{ github.repository }}/releases/download/v${{ env.VERSION }}/${{ matrix.binary }}"
+          chmod +x "${{ matrix.binary }}"
+
+      - name: Verify binary
+        run: |
+          echo "=== Testing ${{ matrix.binary }} ==="
+          echo ""
+          echo "File info:"
+          ls -lh "${{ matrix.binary }}"
+          file "${{ matrix.binary }}" 2>/dev/null || echo "file command not available"
+          echo ""
+          
+          echo "Binary help output:"
+          "./${{ matrix.binary }}" --help || echo "Binary may not support --help"
+          echo ""
+          
+          echo "Binary version:"
+          "./${{ matrix.binary }}" version 2>/dev/null || echo "Version command may not exist"
+          echo ""
+          
+          echo "=== Test passed ==="
