@@ -231,10 +231,28 @@ jobs:
       - name: Prepare artifacts
         run: |
           cd dist
+          
+          echo "=== Before merge - checking directory structure ==="
+          find . -type f | head -30
+          echo ""
+          
+          # Merge artifacts - each artifact is in its own directory
+          # Move files from each subdirectory to current directory
           for dir in */; do
-            mv "$dir"* . 2>/dev/null || true
+            echo "Processing directory: $dir"
+            if [ -d "$dir" ]; then
+              # Move all files from subdirectory, preserving names
+              find "$dir" -maxdepth 1 -type f -exec mv {} . \; 2>/dev/null || true
+            fi
           done
+          
+          # Clean up empty directories
           rm -rf dataset-cli-*/
+          
+          echo ""
+          echo "=== After merge - files in dist/ ==="
+          ls -la
+          echo ""
           
           echo "=== Checking release artifacts ==="
           echo "Expected files (12 total: 6 binaries + 6 checksums):"
@@ -255,9 +273,6 @@ jobs:
           echo "  - dataset-cli-windows-amd64.exe.sha256"
           echo "  - dataset-cli-windows-arm64.exe.sha256"
           echo ""
-          echo "Files in dist/:"
-          ls -la
-          echo ""
           
           # Count total files
           COUNT=$(ls dataset-cli-* 2>/dev/null | wc -l)
@@ -275,13 +290,19 @@ jobs:
             exit 1
           fi
           
-          # Verify all binaries exist
+          # Verify all binaries exist and have reasonable size (>1MB)
           echo ""
-          echo "Verifying binaries exist:"
+          echo "Verifying binaries exist and are non-empty:"
           for binary in dataset-cli-linux-amd64 dataset-cli-linux-arm64 dataset-cli-darwin-amd64 dataset-cli-darwin-arm64 dataset-cli-windows-amd64.exe dataset-cli-windows-arm64.exe; do
             if [ -f "$binary" ]; then
-              SIZE=$(ls -lh "$binary" | awk '{print $5}')
-              echo "  ✓ $binary ($SIZE)"
+              SIZE=$(stat -c%s "$binary" 2>/dev/null || stat -f%z "$binary" 2>/dev/null)
+              SIZE_HUMAN=$(ls -lh "$binary" | awk '{print $5}')
+              if [ "$SIZE" -gt 1000000 ]; then
+                echo "  ✓ $binary ($SIZE_HUMAN, $SIZE bytes)"
+              else
+                echo "  ✗ $binary (too small: $SIZE bytes, expected >1MB)"
+                exit 1
+              fi
             else
               echo "  ✗ $binary (MISSING)"
               exit 1
