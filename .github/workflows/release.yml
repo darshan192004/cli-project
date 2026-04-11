@@ -144,9 +144,10 @@ jobs:
         with:
           name: dataset-cli-${{ matrix.goos }}-${{ matrix.goarch }}
           path: |
-            dataset-cli-*
-            *.sha256
+            dataset-cli-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.ext }}
+            dataset-cli-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.ext }}.sha256
           retention-days: 30
+          compression-level: 0
 
   build-docker:
     name: Build Docker Image
@@ -207,6 +208,28 @@ jobs:
             mv "$dir"* . 2>/dev/null || true
           done
           rm -rf dataset-cli-*/
+          
+          echo "=== Checking release artifacts ==="
+          echo "Expected files:"
+          echo "  - dataset-cli-linux-amd64"
+          echo "  - dataset-cli-linux-arm64"
+          echo "  - dataset-cli-darwin-amd64"
+          echo "  - dataset-cli-darwin-arm64"
+          echo "  - dataset-cli-windows-amd64.exe"
+          echo "  - dataset-cli-windows-arm64.exe"
+          echo ""
+          echo "Files in dist/:"
+          ls -la
+          echo ""
+          echo "Binary count:"
+          ls dataset-cli-* 2>/dev/null | wc -l
+          
+          # Fail if not all 6 binaries are present
+          COUNT=$(ls dataset-cli-* 2>/dev/null | wc -l)
+          if [ "$COUNT" -lt 6 ]; then
+            echo "ERROR: Only $COUNT files found, expected 6 binaries!"
+            exit 1
+          fi
 
       - name: Generate changelog
         id: changelog
