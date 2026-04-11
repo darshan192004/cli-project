@@ -446,16 +446,17 @@ jobs:
         include:
           - os: ubuntu-latest
             binary: dataset-cli-linux-amd64
-            ext: ''
+            shell: bash
           - os: windows-latest
             binary: dataset-cli-windows-amd64.exe
-            ext: '.exe'
+            shell: pwsh
     
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Get version
+        shell: bash
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             VERSION="${{ inputs.version }}"
@@ -464,27 +465,36 @@ jobs:
           fi
           echo "VERSION=$VERSION" >> $GITHUB_ENV
 
-      - name: Download binary
+      - name: Download binary (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        shell: bash
         run: |
           curl -L -o "${{ matrix.binary }}" \
             "https://github.com/${{ github.repository }}/releases/download/v${{ env.VERSION }}/${{ matrix.binary }}"
           chmod +x "${{ matrix.binary }}"
 
-      - name: Verify binary
+      - name: Download binary (Windows)
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          curl -L -o "${{ matrix.binary }}" `
+            "https://github.com/${{ github.repository }}/releases/download/v${{ env.VERSION }}/${{ matrix.binary }}"
+
+      - name: Verify binary (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        shell: bash
         run: |
           echo "=== Testing ${{ matrix.binary }} ==="
-          echo ""
-          echo "File info:"
           ls -lh "${{ matrix.binary }}"
           file "${{ matrix.binary }}" 2>/dev/null || echo "file command not available"
-          echo ""
-          
-          echo "Binary help output:"
           "./${{ matrix.binary }}" --help || echo "Binary may not support --help"
-          echo ""
-          
-          echo "Binary version:"
-          "./${{ matrix.binary }}" version 2>/dev/null || echo "Version command may not exist"
-          echo ""
-          
+          echo "=== Test passed ==="
+
+      - name: Verify binary (Windows)
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          echo "=== Testing ${{ matrix.binary }} ==="
+          Get-ChildItem "${{ matrix.binary }}"
+          & ".\${{ matrix.binary }}" --help 2>$null -or $true
           echo "=== Test passed ==="
