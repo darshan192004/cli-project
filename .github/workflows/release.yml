@@ -298,11 +298,9 @@ jobs:
               "type": "git",
               "url": "git+https://github.com/${{ github.repository }}.git"
             },
-            "bin": {
-              "dataset-cli": "./bin/launcher.js"
-            },
+            "bin": "bin/launcher.js",
             "scripts": {
-              "postinstall": "node ./scripts/install.js"
+              "postinstall": "node scripts/install.js"
             },
             "files": [
               "bin/",
