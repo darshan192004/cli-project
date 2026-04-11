@@ -237,24 +237,30 @@ jobs:
           find . -type f | head -30
           echo ""
           
-          # Merge artifacts - each artifact is in its own directory
-          # Move files from each subdirectory to current directory using absolute paths
+          # First, rename directories to avoid name collisions
+          # Then copy files out
+          i=0
           for dir in */; do
-            echo "Processing directory: $dir"
             if [ -d "$dir" ]; then
-              # Move all files from subdirectory, preserving names
-              for file in "$dir"*; do
+              # Create a unique temp name for each directory
+              TEMP_NAME="artifact_$i"
+              echo "Renaming $dir to $TEMP_NAME/"
+              mv "$dir" "$TEMP_NAME/"
+              
+              # Copy all files from the renamed directory
+              for file in "$TEMP_NAME"/*; do
                 if [ -f "$file" ]; then
                   filename=$(basename "$file")
-                  echo "Moving: $file -> $DIST_DIR/$filename"
-                  mv "$file" "$DIST_DIR/$filename"
+                  echo "Copying: $file -> $DIST_DIR/$filename"
+                  cp "$file" "$DIST_DIR/$filename"
                 fi
               done
+              
+              # Remove the temp directory
+              rm -rf "$TEMP_NAME/"
+              i=$((i + 1))
             fi
           done
-          
-          # Clean up empty directories
-          rm -rf dataset-cli-*/
           
           echo ""
           echo "=== After merge - files in dist/ ==="
