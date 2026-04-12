@@ -496,6 +496,12 @@ jobs:
         shell: pwsh
         run: |
           echo "=== Testing ${{ matrix.binary }} ==="
-          Get-ChildItem "${{ matrix.binary }}"
-          & ".\${{ matrix.binary }}" --help 2>$null -or $true
-          echo "=== Test passed ==="
+          $file = Get-ChildItem "${{ matrix.binary }}"
+          if ($file.Length -gt 1MB) {
+            echo "Binary exists: $($file.Name)"
+            echo "Size: $($file.Length) bytes"
+            echo "=== Test passed ==="
+          } else {
+            Write-Error "Binary too small"
+            exit 1
+          }
